@@ -1,0 +1,2 @@
+{"stmt":"select t0.c1, t1.c2 from t0 natural t1 where t0.c2 > 1","stmtType":3,"tables":null,"cols":null,"parseSuccess":false}
+

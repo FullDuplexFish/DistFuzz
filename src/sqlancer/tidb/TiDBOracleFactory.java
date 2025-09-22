@@ -13,6 +13,7 @@ import sqlancer.common.oracle.TestOracle;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.tidb.oracle.TiDBDQPOracle;
+import sqlancer.tidb.oracle.TiDBOptRuleBlacklistOracle;
 import sqlancer.tidb.oracle.TiDBTLPHavingOracle;
 
 public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalState> {
@@ -72,6 +73,22 @@ public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalSt
                 throws SQLException {
             return new TiDBDQPOracle(globalState);
         }
-    };
+    },
+    OPT_RULE {
+        @Override
+        public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
+                throws SQLException {
+            return new TiDBOptRuleBlacklistOracle(globalState);
+        }
+    },
+    DIST {
+        @Override
+        public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
+                throws Exception {
+            List<TestOracle<TiDBProvider.TiDBGlobalState>> oracles = new ArrayList<>();
+            oracles.add(OPT_RULE.create(globalState));
+            return new CompositeTestOracle<TiDBProvider.TiDBGlobalState>(oracles, globalState);
+        }
+    }
 
 }

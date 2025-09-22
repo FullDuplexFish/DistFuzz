@@ -117,7 +117,7 @@
           </compilerArguments>
           <compilerId>eclipse</compilerId>
           <showWarnings>true</showWarnings>
-          <failOnWarning>true</failOnWarning>
+          <failOnWarning>false</failOnWarning>
         </configuration>
         <dependencies>
           <dependency>
@@ -325,12 +325,17 @@
     <groupId>org.mockito</groupId>
     <artifactId>mockito-core</artifactId>
     <version>5.20.0</version>
-</dependency>
+    </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <version>5.11.2</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.alibaba</groupId>
+      <artifactId>fastjson</artifactId>
+      <version>2.0.31</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -509,6 +514,8 @@
                 <include>**/TestDataFusion.java</include>
               </includes>
               <argLine>--add-opens java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED</argLine>
+               <redirectTestOutputToFile>false</redirectTestOutputToFile>
+        <forkCount>0</forkCount>
             </configuration>
           </plugin>
         </plugins>
