@@ -29,6 +29,9 @@ public class TiDBOptions implements DBMSSpecificOptions<TiDBOracleFactory> {
     @Parameter(names = { "--tiflash" }, description = "Enable TiFlash")
     public boolean tiflash;
 
+    @Parameter(names = { "--queries-per-batch" }, description = "The number of queries to be executed in once call of oracle")
+    public int queriesPerBatch = 10;
+
     @Override
     public List<TiDBOracleFactory> getTestOracleFactory() {
         return oracle;

@@ -384,6 +384,9 @@ public final class Main {
         public void incrementSelectQueryCount() {
             Main.nrQueries.addAndGet(1);
         }
+        public void incrementSelectQueryCount(long cnt) {
+            Main.nrQueries.addAndGet(cnt);
+        }
 
         public Long getSelectQueryCount() {
             return Main.nrQueries.get();
