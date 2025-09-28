@@ -16,7 +16,7 @@ public class TiDBSQLParser implements SQLParser{
 
     DecodedStmt stmt;
     
-    public DecodedStmt parse(String queryString, String uid) {
+    public static DecodedStmt parse(String queryString, String dbname) {
 
         String line = null;
         try {
@@ -24,7 +24,7 @@ public class TiDBSQLParser implements SQLParser{
             String scriptPath = "./src/sqlancer/go_parser/parse_a_stmt.sh";
             List<String> cmdInfo = new ArrayList<>();
             cmdInfo.add(scriptPath);
-            cmdInfo.add(uid);
+            cmdInfo.add(dbname);
             cmdInfo.add(queryString);
             line = cmdExec.executeLinuxCmd(cmdInfo);
             

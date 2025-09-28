@@ -6,13 +6,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 
 import sqlancer.ComparatorHelper;
 import sqlancer.Randomly;
 import sqlancer.SQLGlobalState;
+import sqlancer.common.DecodedStmt;
 import sqlancer.common.oracle.TestOracle;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
@@ -32,12 +39,16 @@ import sqlancer.tidb.ast.TiDBTableReference;
 import sqlancer.tidb.ast.TiDBText;
 import sqlancer.tidb.gen.TiDBHintGenerator;
 import sqlancer.tidb.visitor.TiDBVisitor;
+import sqlancer.tidb.TiDBSQLParser;
 
 public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
     private TiDBExpressionGenerator gen;
-    private final TiDBGlobalState state;
+    public final TiDBGlobalState state;
     private TiDBSelect select;
     private final ExpectedErrors errors = new ExpectedErrors();
+    private static final Logger logger = LogManager.getLogger("PlacementRuleOracleTest");
+    public Set<String> debug_tables = new HashSet<>();
+    public List<DecodedStmt> debug_decodedStmt = new ArrayList<>();
 
     private List<String> history;
 
@@ -51,6 +62,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
         List<String> queries = getSQLQueries();
         placement_rule_oracle(queries);
     }
+
 
     public String getSQLQueriesByGeneration() {
         TiDBTables tables = state.getSchema().getRandomTableNonEmptyTables();
@@ -83,7 +95,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
         String originalQueryString = TiDBVisitor.asString(select);
         return originalQueryString;
     }
-    List<String> getSQLQueries() {
+    public List<String> getSQLQueries() {
         List<String> res = new ArrayList<String>();
         if(state.getRandomly().getBoolean()) {//get queries by generation
             for(int i = 0; i < ((TiDBOptions)state.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
@@ -99,7 +111,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
     public void changePolicy(String chosen_table){
 	    
         try{
-                   state.executeStatement(new SQLQueryAdapter("ALTER TABLE " + chosen_table + " PLACEMENT POLICY=p" + Integer.toString(state.getRandomly().getInteger(1,3)), errors, true));
+                state.executeStatement(new SQLQueryAdapter("ALTER TABLE " + chosen_table + " PLACEMENT POLICY=p" + Integer.toString(state.getRandomly().getInteger(1,3)), errors, true));
                 state.getState().logStatement("ALTER TABLE " + chosen_table + " PLACEMENT POLICY=p" + Integer.toString(state.getRandomly().getInteger(1,3)));
         }catch(Exception e){
             e.printStackTrace();
@@ -136,17 +148,36 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
              }
          }
      }
+     public void changePolicyForQueires(List<String> queries) {
+        Set<String> tables = new HashSet<String>();
+        for(String str: queries) {
+            DecodedStmt decodedStmt = TiDBSQLParser.parse(str, state.getDatabaseName());
+            debug_decodedStmt.add(decodedStmt);
+            if(decodedStmt.getParseSuccess() && decodedStmt.getTables() != null) {
+                for(String table: decodedStmt.getTables()) {
+                    tables.add(table);
+                    debug_tables.add(table);
+                }
+            }
+        }
+        //debug_tables = tables;
+        for(String table: tables) {
+            changePolicy(table);
+        }
+
+     }
     
     private void placement_rule_oracle(List<String> queries) throws Exception {
         List<String> firstResult = new ArrayList<String>();
         List<String> secondResult = new ArrayList<String>();
 
-        //changePolicy();
+        changePolicyForQueires(queries);
+  
         for(String query: queries) {
             firstResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
-        
-        //changePolicy();
+        changePolicyForQueires(queries);
+
         for(String query: queries) {
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }

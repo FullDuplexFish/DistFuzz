@@ -25,6 +25,7 @@ public class TiDBParserTest {
 
     @Test
     public void testSelect() {
+        //DecodedStmt res = parser.parse("select t0.c1, t1.c2 from t0 natural join t1 where t0.c2 > 1", "database0");
         DecodedStmt res = parser.parse("select t0.c1, t1.c2 from t0 natural join t1 where t0.c2 > 1", "database0");
         System.out.println(res.getStmt());
         String str = JSON.toJSONString(res);

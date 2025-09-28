@@ -20,7 +20,7 @@ public class goCmdExec {
             
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
                 while ((line = reader.readLine()) != null) {
-                    System.out.println("get return:" + line);
+                    //System.out.println("get return:" + line);
                     if(line != null) {
                         res = line;
                     }
