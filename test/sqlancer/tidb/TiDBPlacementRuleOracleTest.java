@@ -62,9 +62,7 @@ public class TiDBPlacementRuleOracleTest {
             queries.add("select c1");
             spyOracle.changePolicyForQueires(queries);
             //System.out.println(spyOracle.state.getDatabaseName());
-            for(String table: spyOracle.debug_tables) {
-                System.out.println(table);
-            }
+
             // for(DecodedStmt q: spyOracle.debug_decodedStmt) {
             //     System.out.println(q);
             // }
@@ -72,27 +70,5 @@ public class TiDBPlacementRuleOracleTest {
             e.printStackTrace();
         }
     }
-    @Test
-    public void testChangePolicy() {
-        try{
-            List<String> queries = new ArrayList<String>();
-            queries.add("select c1, c2 from t1 natural join t2 where t1.c1 = 1");
-            queries.add("select c2 from t2");
-            queries.add("select c1");
-            Set<String> tables = new HashSet<String>();
-            for(String str: queries) {
-                DecodedStmt decodedStmt = TiDBSQLParser.parse(str, "database0");
-                System.out.println(decodedStmt.getTables());
-                if(decodedStmt.getParseSuccess() && decodedStmt.getTables() != null) {
-                    for(String table: decodedStmt.getTables()) {
-                        tables.add(table);
-                    }
-                }
-            }
-            debug_tables = tables;
-            System.out.println(debug_tables);
-        }catch(Exception e) {
-            e.printStackTrace();
-        }
-    }
+
 }

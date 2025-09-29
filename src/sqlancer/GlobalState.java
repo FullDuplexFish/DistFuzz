@@ -1,9 +1,14 @@
 package sqlancer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import sqlancer.common.query.Query;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.common.schema.AbstractSchema;
 import sqlancer.common.schema.AbstractTable;
+import sqlancer.tidb.TiDBSchema;
+import sqlancer.tidb.TiDBSchema.TiDBColumn;
 
 public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends AbstractSchema<?, ?>, C extends SQLancerDBConnection> {
 
@@ -16,6 +21,20 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
     private StateToReproduce state;
     private Main.QueryManager<C> manager;
     private String databaseName;
+    private List<String> history;
+
+    public List<String> getHistory() {
+        return history;
+    }
+    public void clearHistory() {
+        history.clear();
+    }
+    public void initHistory() {
+        history = new ArrayList<String>();
+    }
+    public void insertIntoHistory(String stmt) {
+        history.add(stmt);
+    }
 
     public void setConnection(C con) {
         this.databaseConnection = con;
@@ -99,6 +118,10 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
             }
         }
         return timer;
+    }
+    public String replaceStmtTableName(String origin_str, String old_name, String new_name) {
+        String newString = origin_str.replaceAll(old_name + "(?![0-9]+)", new_name);
+        return newString;
     }
 
     protected abstract void executeEpilogue(Query<?> q, boolean success, ExecutionTimer timer) throws Exception;

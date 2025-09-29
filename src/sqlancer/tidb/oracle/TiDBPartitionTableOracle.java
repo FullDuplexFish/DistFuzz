@@ -41,16 +41,14 @@ import sqlancer.tidb.gen.TiDBHintGenerator;
 import sqlancer.tidb.visitor.TiDBVisitor;
 import sqlancer.tidb.TiDBSQLParser;
 
-public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
+public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
     private TiDBExpressionGenerator gen;
     public final TiDBGlobalState state;
     private TiDBSelect select;
     private final ExpectedErrors errors = new ExpectedErrors();
 
 
-    private List<String> history;
-
-    public TiDBPlacementRuleOracle(TiDBGlobalState globalState) {
+    public TiDBPartitionTableOracle(TiDBGlobalState globalState) {
         state = globalState;
         TiDBErrors.addExpressionErrors(errors);
     }
@@ -58,10 +56,10 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
     @Override
     public void check() throws Exception {
         List<String> queries = getSQLQueries();
-        placement_rule_oracle(queries);
+        partition_table_oracle(queries);
     }
 
-
+    
     public String getSQLQueriesByGeneration() {
         TiDBTables tables = state.getSchema().getRandomTableNonEmptyTables();
         gen = new TiDBExpressionGenerator(state).setColumns(tables.getColumns());
@@ -106,82 +104,86 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
         }
         return res;
     }
-    public void changePolicy(String chosen_table){
-	    
-        try{
-                state.executeStatement(new SQLQueryAdapter("ALTER TABLE " + chosen_table + " PLACEMENT POLICY=p" + Integer.toString(state.getRandomly().getInteger(1,3)), errors, true));
-                state.getState().logStatement("ALTER TABLE " + chosen_table + " PLACEMENT POLICY=p" + Integer.toString(state.getRandomly().getInteger(1,3)));
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-        int scheduled = 0;
-         try{
-             for(int i = 0; i < 10; i ++ ) {
-                         SQLQueryAdapter q = new SQLQueryAdapter("SHOW PLACEMENT WHERE Target=\'TABLE " + state.getDatabaseName() + "." + chosen_table + "\';");
-                         try (SQLancerResultSet rs = q.executeAndGet(state)) {
-                         if (rs != null) {
-                             while (rs.next()) {
-                                 String sc_st = rs.getString(3);
-                     if(sc_st.equals("SCHEDULED")){
-                         scheduled = 1;
-                         break;
-                     }
-                             }
-                             }
-                         } catch (Throwable e) {
-                             e.printStackTrace();
-                         }
-                 if(scheduled == 1)
-                 {
-                     break;
-                 }
-             }
-         }catch(Exception e){
-             e.printStackTrace();
-             
-         }finally{
-             if(scheduled == 0)
-             {
-                 state.getState().logStatement("NOT SCHEDULED!");
-             }
-         }
-     }
-     public void changePolicyForQueires(List<String> queries) {
-        System.out.println("changing policy");
-        Set<String> tables = new HashSet<String>();
-        for(String str: queries) {
-            DecodedStmt decodedStmt = TiDBSQLParser.parse(str, state.getDatabaseName());
-            if(decodedStmt.getParseSuccess() && decodedStmt.getTables() != null) {
-                for(String table: decodedStmt.getTables()) {
-                    tables.add(table);
-                }
-            }
-        }
-        //debug_tables = tables;
-        for(String table: tables) {
-            changePolicy(table);
-        }
 
-     }
     
-    private void placement_rule_oracle(List<String> queries) throws Exception {
+    private void partition_table_oracle(List<String> queries) throws Exception {
         List<String> firstResult = new ArrayList<String>();
         List<String> secondResult = new ArrayList<String>();
 
-        changePolicyForQueires(queries);
+        try{
+            generateOracleTable();
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+        List<String> oracle_queries = generateOracleQueries();
+
+
   
         for(String query: queries) {
             firstResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
-        changePolicyForQueires(queries);
 
-        for(String query: queries) {
+
+        for(String query: oracle_queries) {
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
         ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
 
         
         state.getManager().incrementSelectQueryCount((long)queries.size());
+    }
+    private void removePartition(DecodedStmt stmt) {
+        String str = stmt.getStmt();
+        stmt.setStmt(str.substring(0, str.indexOf("partition")));
+    }
+    private void replaceTableNameWithOracleNameInStmt(DecodedStmt stmt) {
+        for(String table: stmt.getTables()) {
+            String new_name = table + "_oracle";
+            stmt.setStmt(state.replaceStmtTableName(stmt.getStmt(), table, new_name));
+        }
+    }
+    private void appendPartition(DecodedStmt stmt) {
+        switch((int)state.getRandomly().getNotCachedInteger(0, 6)) {
+            case(0):
+                generateRangePartition(stmt);
+                break;
+            case(1):
+                generateHashPartition(stmt);
+                break;
+            case(2):
+                generateRangePartition2(stmt);
+                break;
+            case(3):
+                generateHashPartition2(stmt);
+                break;
+            case(4):
+                generateListPartition(stmt);
+                break;
+            case(5):
+                generateKeyPartition(stmt);
+                break;
+            
+        }
+    }
+    private void generateRangePartition(DecodedStmt stmt) {
+        
+    }
+    private void generateOracleTable() {
+        for(String stmt: state.getHistory()) {
+            DecodedStmt decodedStmt = TiDBSQLParser.parse(stmt, state.getDatabaseName());
+            decodedStmt.setStmt(decodedStmt.getStmt().toLowerCase());
+            if(decodedStmt.getParseSuccess()) {
+                if(decodedStmt.getStmtType() == DecodedStmt.stmtType.DDL) {
+                    if(decodedStmt.getStmt().toLowerCase().contains("partition")) {
+                        removePartition(decodedStmt);
+                    }
+                    appendPartition(decodedStmt);
+                }else{
+                    replaceTableNameWithOracleNameInStmt(decodedStmt);
+                }
+                state.executeStatement(new SQLQueryAdapter(decodedStmt.getStmt(), errors));
+            }
+        }
     }
 }
 

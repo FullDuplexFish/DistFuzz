@@ -68,6 +68,10 @@ public class StatementExecutor<G extends GlobalState<?, ?, ?>, A extends Abstrac
                 do {
                     query = nextAction.getQuery(globalState);
                     success = globalState.executeStatement(query);
+
+                    if(success) {
+                        globalState.insertIntoHistory(query.getQueryString());
+                    }
                 } while (nextAction.canBeRetried() && !success
                         && nrTries++ < globalState.getOptions().getNrStatementRetryCount());
             } catch (IgnoreMeException ignored) {

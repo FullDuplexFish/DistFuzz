@@ -113,11 +113,18 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
 
     @Override
     public void generateDatabase(TiDBGlobalState globalState) throws Exception {
+        if(globalState.getHistory() == null) {
+            globalState.initHistory();
+        }
+        globalState.clearHistory();
         for (int i = 0; i < Randomly.fromOptions(1, 2); i++) {
             boolean success;
             do {
                 SQLQueryAdapter qt = new TiDBTableGenerator().getQuery(globalState);
                 success = globalState.executeStatement(qt);
+                if(success) {
+                    globalState.insertIntoHistory(qt.getQueryString());
+                }
             } while (!success);
         }
 

@@ -524,6 +524,7 @@
                <forkCount>0</forkCount>
                <useFile>false</useFile>
                <useSystemClassLoader>true</useSystemClassLoader>
+               <showOutput>true</showOutput>
             </configuration>
           </plugin>
         </plugins>

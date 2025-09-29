@@ -7,7 +7,7 @@ import java.util.List;
  */
 public class DecodedStmt {
     String stmt;
-    enum stmtType {DDL, DML, DQL, OTHER};
+    public enum stmtType {DDL, DML, DQL, OTHER};
     stmtType type;
     List<String> tables;
     List<String> cols;
