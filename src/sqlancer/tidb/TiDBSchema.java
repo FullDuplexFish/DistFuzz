@@ -56,6 +56,7 @@ public class TiDBSchema extends AbstractSchema<TiDBGlobalState, TiDBTable> {
                 throw new AssertionError(this);
             }
         }
+        
 
         public boolean canHaveDefault() {
             switch (this) {
@@ -100,6 +101,14 @@ public class TiDBSchema extends AbstractSchema<TiDBGlobalState, TiDBTable> {
                 throw new AssertionError(this);
             }
             return size;
+        }
+        public Boolean isInt() {
+            if(this.dataType == TiDBDataType.INT) {
+                return true;
+            }
+            else {
+                return false;
+            }
         }
 
         public static TiDBCompositeDataType getInt(int size) {
@@ -349,7 +358,7 @@ public class TiDBSchema extends AbstractSchema<TiDBGlobalState, TiDBTable> {
         return indexes;
     }
 
-    private static List<TiDBColumn> getTableColumns(SQLConnection con, String tableName) throws SQLException {
+    public static List<TiDBColumn> getTableColumns(SQLConnection con, String tableName) throws SQLException {
         List<TiDBColumn> columns = new ArrayList<>();
         try (Statement s = con.createStatement()) {
             try (ResultSet rs = s.executeQuery("SHOW COLUMNS FROM " + tableName)) {

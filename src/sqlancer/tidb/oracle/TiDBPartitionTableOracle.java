@@ -55,8 +55,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
 
     @Override
     public void check() throws Exception {
-        List<String> queries = getSQLQueries();
-        partition_table_oracle(queries);
+        partition_table_oracle();
     }
 
     
@@ -106,7 +105,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
     }
 
     
-    private void partition_table_oracle(List<String> queries) throws Exception {
+    private void partition_table_oracle() throws Exception {
         List<String> firstResult = new ArrayList<String>();
         List<String> secondResult = new ArrayList<String>();
 
@@ -115,7 +114,18 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         }catch(Exception e) {
             e.printStackTrace();
         }
-        List<String> oracle_queries = generateOracleQueries();
+        List<String> queries = getSQLQueries();
+        List<String> oracle_queries = new ArrayList<String>();
+        for(String query: queries) {
+            DecodedStmt stmt = TiDBSQLParser.parse(query, state.getDatabaseName());
+            String new_query = stmt.getStmt();
+            if(stmt.getTables().size() > 0) {
+                for(String table: stmt.getTables()) {
+                    new_query = state.replaceStmtTableName(new_query, table, table + "_oracle");
+                }
+            }
+            oracle_queries.add(query);
+        }
 
 
   
@@ -165,9 +175,172 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             
         }
     }
+    public void generateKeyPartition(DecodedStmt stmt) {
+        if(stmt.getTables().size() == 0) {
+            return;
+        }
+        String str = stmt.getStmt();
+        String table_name = stmt.getTables().get(0);
+        String new_name = table_name + "_oracle";
+        str = state.replaceStmtTableName(str, table_name, new_name);
+        String col = state.getRandomColumnStrings(table_name);
+        col = col.split(";")[0];
+        if(col == null || Randomly.getBooleanWithRatherLowProbability()) {
+            col = "";
+        }
+        int pcnt = (int)Randomly.getNotCachedInteger(10, 100);
+        str += " partition by key(";
+        str += col;
+        str += ") partitions ";
+        str += String.valueOf(pcnt);
+        stmt.setStmt(str);
+        return;
+    }
+    public void generateListPartition(DecodedStmt stmt) {
+        if(stmt.getTables().size() == 0) {
+            return;
+        }
+        String str = stmt.getStmt();
+        String table_name = stmt.getTables().get(0);
+        String new_name = table_name + "_oracle";
+        str = state.replaceStmtTableName(str, table_name, new_name);
+        String cols_and_types = state.getRandomColumnStrings(table_name);
+        String[] tmp = cols_and_types.split(";");
+        String[] cols = tmp[0].split(",");
+        String[] types = tmp[1].split(",");
+        /*state.getLogger().writeCurrent("print types");
+        for(int i = 0 ; i < types.length; i ++ ) {
+            state.getLogger().writeCurrent(types[i]);
+        }*/
+        str += " partition by list columns(" + tmp[0] + ") (";
+        SQLQueryAdapter q = new SQLQueryAdapter("select " + tmp[0] + " from " + table_name);
+        List<String> res_set = new ArrayList<String>();
+        try (SQLancerResultSet rs = q.executeAndGet(state)) {
+            if (rs != null) {
+                String cur = "";
+                while (rs.next()) {
+
+                    for(int i = 0; i < cols.length; i ++ ) {
+                        if(i > 0) cur += ",";
+                        if(types[i].equals("NUM"))
+                            cur += String.valueOf(rs.getObject(cols[i]));
+                        else
+                            cur += "\'" + String.valueOf(rs.getObject(cols[i])) + "\'";
+                    }
+                    if(!res_set.contains(cur))
+                        res_set.add(cur);
+                    cur = "";
+                }
+                //Collections.shuffle(res_set);
+
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        } 
+        int st = (int)Randomly.getNotCachedInteger(0, res_set.size());
+        int pcnt = (int)Randomly.getNotCachedInteger(0, res_set.size());
+        for(int i = 0; i < pcnt; i ++ ) {
+
+            str += " partition p" + String.valueOf(i) + " values in (" + res_set.get(st) + "),";
+            st ++ ;
+            st %= res_set.size();
+        }
+
+        str += " partition pmax values in (default));";
+        stmt.setStmt(str);
+        return;
+        
+
+    }
+    public void generateRangePartition2(DecodedStmt stmt) {
+        if(stmt.getTables().size() == 0) {
+            return;
+        }
+        String str = stmt.getStmt();
+        String table_name = stmt.getTables().get(0);
+        String new_name = table_name + "_oracle";
+        str = state.replaceStmtTableName(str, table_name, new_name);
+        int low = (int)Randomly.getNotCachedInteger(10, 100000);
+        int high = (int)Randomly.getNotCachedInteger(low + 10000, low + 1000000);
+        int pcnt = (int)Randomly.getNotCachedInteger(3, 10);
+        String q = "split table " + table_name + "_oracle between (" + low + ") and (" + high + ") regions " + pcnt + ";";
+        str += ";" + q;
+        stmt.setStmt(str);
+        return;
+    }
     private void generateRangePartition(DecodedStmt stmt) {
+        if(stmt.getTables().size() == 0) {
+            return;
+        }
+        String str = stmt.getStmt();
+        String table_name = stmt.getTables().get(0);
+        String col = state.getRandomIntColumnString(table_name);
+        String new_name = table_name + "_oracle";
+        str = state.replaceStmtTableName(str, table_name, new_name);
+        if(col == null) {//no int type column
+            return;
+        }
+        int range = (int)Randomly.getNotCachedInteger(10, 10000);
+        int cnt = (int)Randomly.getNotCachedInteger(10, 30);
+        str += " partition by range(" + col + ")(";
+        int bound = range;
+        for(int i = 0; i < cnt; i ++ ) {
+            str += "partition p" + String.valueOf(i) + " values less than(" + String.valueOf(bound) + "),";
+
+            bound += range + (int)Randomly.getNotCachedInteger(0, 100);
+        }
+        str += "partition p" + String.valueOf(cnt) + " values less than maxvalue);";
+        
+        stmt.setStmt(str);
+        return;
         
     }
+    public void generateHashPartition2(DecodedStmt stmt) {
+        if(stmt.getTables().size() == 0) {
+            return;
+        }
+        String table_name = stmt.getTables().get(0);
+        String res = "";
+        String col = state.getRandomIntColumnString(table_name);
+        
+        String new_name = table_name + "_oracle";
+        res += "drop table if exists " + new_name + ";";
+        res += "create table " + new_name + " like " + table_name + ";";
+        res += "insert into " + new_name + " select * from " + table_name + ";";
+        if(col == null) {
+            stmt.setStmt(res);
+            return;
+        }
+        res += "alter table " + new_name + " partition by hash(" + col + ") partitions " + String.valueOf(state.getRandomly().getInteger(1, 15)) + ";";
+        res += "alter table " + new_name + " partition by hash(" + col + ") partitions " + String.valueOf(state.getRandomly().getInteger(1, 15)) 
+            + " update indexes (`primary` global)";
+        stmt.setStmt(res);
+        return;
+
+    }
+
+    private void generateHashPartition(DecodedStmt stmt) {
+        if(stmt.getTables().size() == 0) {
+            return;
+        }
+        String str = stmt.getStmt();
+        String table_name = stmt.getTables().get(0);
+        String new_name = table_name + "_oracle";
+        str = state.replaceStmtTableName(str, table_name, new_name);
+        String col = state.getRandomIntColumnString(table_name);
+        if(col == null) {
+            return;
+        }
+        int pcnt = (int)Randomly.getNotCachedInteger(10, 100);
+        str += " partition by hash(";
+        str += col;
+        str += ") partitions ";
+        str += String.valueOf(pcnt);
+        stmt.setStmt(str);
+        return;
+
+    }
+
     private void generateOracleTable() {
         for(String stmt: state.getHistory()) {
             DecodedStmt decodedStmt = TiDBSQLParser.parse(stmt, state.getDatabaseName());
@@ -181,7 +354,11 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
                 }else{
                     replaceTableNameWithOracleNameInStmt(decodedStmt);
                 }
-                state.executeStatement(new SQLQueryAdapter(decodedStmt.getStmt(), errors));
+                try{
+                    state.executeStatement(new SQLQueryAdapter(decodedStmt.getStmt(), errors));
+                }catch(Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

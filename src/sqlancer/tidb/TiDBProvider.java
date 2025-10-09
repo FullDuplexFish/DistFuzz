@@ -5,7 +5,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.google.auto.service.AutoService;
@@ -24,6 +26,7 @@ import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLQueryProvider;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.tidb.TiDBProvider.TiDBGlobalState;
+import sqlancer.tidb.TiDBSchema.TiDBColumn;
 import sqlancer.tidb.TiDBSchema.TiDBTable;
 import sqlancer.tidb.gen.TiDBAlterTableGenerator;
 import sqlancer.tidb.gen.TiDBAnalyzeTableGenerator;
@@ -73,11 +76,76 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
     }
 
     public static class TiDBGlobalState extends SQLGlobalState<TiDBOptions, TiDBSchema> {
-
+        public boolean hasPolicy = false;
         @Override
         protected TiDBSchema readSchema() throws SQLException {
             return TiDBSchema.fromConnection(getConnection(), getDatabaseName());
         }
+        public String getRandomIntColumnString(String table_name) {
+            try {
+                List<TiDBColumn> databaseColumns = TiDBSchema.getTableColumns(getConnection(), table_name);
+                
+                TiDBColumn col = this.getRandomly().fromList(databaseColumns);
+                List<TiDBColumn> list = new ArrayList<TiDBColumn>();
+                for(int i = 0; i < databaseColumns.size(); i ++ ) {
+                    if(databaseColumns.get(i).getType().isInt()) {
+                        list.add(databaseColumns.get(i));
+                    }
+                }
+                if(list.isEmpty()) {
+                    return null;
+                }
+                return this.getRandomly().fromList(list).getName();
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+            
+        }
+        /*
+         * This function return random columns like 'col1,col2;NUM,TEXT'
+         */
+        public String getRandomColumnStrings(String table_name) {
+            try {
+                List<TiDBColumn> databaseColumns = TiDBSchema.getTableColumns(getConnection(), table_name);
+                String res = "";
+                String tp = "";
+                //getLogger().writeCurrent("querying the columns of " + table_name);
+                //getLogger().writeCurrent("size is " + databaseColumns.size());
+                if(databaseColumns.size() == 1) {
+                    TiDBColumn col = this.getRandomly().fromList(databaseColumns);
+                    res = col.getName();
+                    if(col.getType().getPrimitiveDataType().isNumeric())
+                        tp = "NUM";
+                    else 
+                        tp = "TEXT";
+                }else{
+                    int sz = (int)Randomly.getNotCachedInteger(1, databaseColumns.size());
+                    for(int i = 0; i < sz; i ++ ) {
+                        if(i != 0){ 
+                            res += ",";
+                            tp += ",";
+                        }
+                        int ran = (int)Randomly.getNotCachedInteger(0, databaseColumns.size());
+                        res += databaseColumns.get(ran).getName();
+                        //getLogger().writeCurrent("the type of column " + databaseColumns.get(ran).getName() + " is " + databaseColumns.get(ran).getType().getPrimitiveDataType());
+                        if(databaseColumns.get(ran).getType().getPrimitiveDataType().isNumeric())
+                            tp += "NUM";
+                        else 
+                            tp += "TEXT";
+                        databaseColumns.remove(ran);
+                    }
+                }
+                res += ";" + tp;
+                return res;
+                
+                
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+        
 
     }
 
@@ -110,9 +178,67 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         }
 
     }
+    public void initDatabase(TiDBGlobalState globalState) throws Exception {
+        if(globalState.hasPolicy == false){
+            try{
+                globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p1 primary_region=\"region1\", regions=\"region1,region2, region3\";"));
+                globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p2 primary_region=\"region2\", regions=\"region1,region2, region3\";"));
+                globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p2 primary_region=\"region3\", regions=\"region1,region2, region3\";"));
+                globalState.executeStatement(new SQLQueryAdapter("CREATE or replace PLACEMENT POLICY two_replicas FOLLOWERS=2;"));
+
+                globalState.executeStatement(new SQLQueryAdapter("ALTER RANGE global PLACEMENT POLICY two_replicas;"));
+                globalState.executeStatement(new SQLQueryAdapter("ALTER RANGE global PLACEMENT POLICY two_replicas;"));
+                
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+            globalState.hasPolicy = true;
+        }
+        try{
+            
+            globalState.executeStatement(new SQLQueryAdapter("SET GLOBAL tidb_multi_statement_mode='ON';"));
+            globalState.executeStatement(new SQLQueryAdapter("SET @@sql_mode='';"));
+            globalState.executeStatement(new SQLQueryAdapter("SET @@global.tidb_enable_clustered_index='off';"));
+            globalState.executeStatement(new SQLQueryAdapter("delete from mysql.opt_rule_blacklist;"));
+            globalState.executeStatement(new SQLQueryAdapter("admin reload opt_rule_blacklist;"));
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+    public void updateExpectedErrors(ExpectedErrors errors) {
+        TiDBErrors.addExpressionErrors(errors);
+        TiDBErrors.addExpressionHavingErrors(errors);
+        TiDBErrors.addInsertErrors(errors);
+        errors.add("already exists");
+    
+        errors.addRegex(Pattern.compile("Operation .+ failed"));
+        errors.add("The used command is not allowed with this MySQL version");
+        errors.add("Unknown table");
+        errors.add("expression should not be an empty string");
+        errors.add("Partition column values of incorrect type");
+        errors.add("Table partition metadata not correct, neither partition expression or list of partition columns");
+        errors.add("Duplicate key name");
+        errors.add("is of a not allowed type for this type of partitioning");
+        errors.add("doesn't exist");
+        errors.add("is not granted to root");
+        errors.add("cannot issue statements that do not produce result sets");
+        errors.add("Global Index is needed for index");
+        errors.add("Incorrect index name");
+        errors.add("Inconsistency in usage of column lists for partitioning");
+        errors.add("index 'PRIMARY' is unique and contains all partitioning columns, but has Global Index set");
+        errors.add("database exists");
+        errors.add("A CLUSTERED INDEX must include all columns in the table's partitioning function");
+        errors.add("Split table region lower value count should be 2");
+        errors.add("doesn't exist");
+        errors.add("No database selected");
+        errors.add("not BASE TABLE");
+    }
 
     @Override
     public void generateDatabase(TiDBGlobalState globalState) throws Exception {
+        initDatabase(globalState);
+        updateExpectedErrors(globalState.getExpectedErrors());
         if(globalState.getHistory() == null) {
             globalState.initHistory();
         }
@@ -176,6 +302,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             }
         }
     }
+    
 
     @Override
     public SQLConnection createDatabase(TiDBGlobalState globalState) throws SQLException {

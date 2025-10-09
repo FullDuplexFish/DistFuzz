@@ -1,5 +1,6 @@
 package sqlancer;
 
+import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.Query;
 import sqlancer.common.schema.AbstractSchema;
 
@@ -13,7 +14,10 @@ import sqlancer.common.schema.AbstractSchema;
  */
 public abstract class SQLGlobalState<O extends DBMSSpecificOptions<?>, S extends AbstractSchema<?, ?>>
         extends GlobalState<O, S, SQLConnection> {
-
+    private ExpectedErrors errors;
+    public ExpectedErrors getExpectedErrors() {
+        return errors;
+    }
     @Override
     protected void executeEpilogue(Query<?> q, boolean success, ExecutionTimer timer) throws Exception {
         boolean logExecutionTime = getOptions().logExecutionTime();
