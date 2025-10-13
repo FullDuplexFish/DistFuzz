@@ -14,6 +14,8 @@ import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.tidb.oracle.TiDBDQPOracle;
 import sqlancer.tidb.oracle.TiDBOptRuleBlacklistOracle;
+import sqlancer.tidb.oracle.TiDBPlacementRuleOracle;
+import sqlancer.tidb.oracle.TiDBPartitionTableOracle;
 import sqlancer.tidb.oracle.TiDBTLPHavingOracle;
 
 public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalState> {
@@ -78,7 +80,21 @@ public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalSt
         @Override
         public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
                 throws SQLException {
+            return new TiDBPlacementRuleOracle(globalState);
+        }
+    },
+    PLACEMENT_RULE {
+        @Override
+        public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
+                throws SQLException {
             return new TiDBOptRuleBlacklistOracle(globalState);
+        }
+    },
+    PARTITION_TABLE {
+        @Override
+        public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
+                throws SQLException {
+            return new TiDBPartitionTableOracle(globalState);
         }
     },
     DIST {
@@ -87,6 +103,8 @@ public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalSt
                 throws Exception {
             List<TestOracle<TiDBProvider.TiDBGlobalState>> oracles = new ArrayList<>();
             oracles.add(OPT_RULE.create(globalState));
+            oracles.add(PLACEMENT_RULE.create(globalState));
+            oracles.add(PARTITION_TABLE.create(globalState));
             return new CompositeTestOracle<TiDBProvider.TiDBGlobalState>(oracles, globalState);
         }
     }
