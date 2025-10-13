@@ -138,7 +138,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             //System.out.println("mutated query:" + query);
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
-        ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
+        ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, oracle_queries, state);//checkresults by batch
 
         
         state.getManager().incrementSelectQueryCount((long)queries.size());
@@ -153,7 +153,16 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             stmt.setStmt(state.replaceStmtTableName(stmt.getStmt(), table, new_name));
         }
     }
+    private String trimString(String str) {
+        str = str.trim();
+        if(str.endsWith(";")) {
+            str = str.substring(0, str.length() - 1);
+        }
+        return str;
+    }
     private void appendPartition(DecodedStmt stmt) {
+        stmt.setStmt(trimString(stmt.getStmt()));
+
         switch((int)state.getRandomly().getNotCachedInteger(0, 6)) {
             case(0):
                 generateRangePartition(stmt);
