@@ -1,7 +1,9 @@
 package sqlancer.tidb;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -14,7 +16,9 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import sqlancer.ComparatorHelper;
 import sqlancer.DBMSSpecificOptions;
+import sqlancer.Main;
 import sqlancer.MainOptions;
 import sqlancer.Randomly;
 import sqlancer.common.query.SQLQueryAdapter;
@@ -32,10 +36,13 @@ public class TiDBPartitionTableOracleTest {
     TiDBGlobalState state;
     @BeforeEach
     private void init(){
-        oracle = new TiDBPartitionTableOracle(state);
-        spyOracle = Mockito.spy(oracle);
+        
         TiDBGlobalState originalState = new TiDBGlobalState();
         state = Mockito.spy(originalState);
+        oracle = new TiDBPartitionTableOracle(state);
+        spyOracle = Mockito.spy(oracle);
+        Main.QueryManager manager = mock(Main.QueryManager.class);
+        
 
         TiDBSchema schema = mock(TiDBSchema.class);
         MainOptions op = mock(MainOptions.class);
@@ -63,9 +70,15 @@ public class TiDBPartitionTableOracleTest {
             Mockito.doReturn(true).when(state).executeStatement(Mockito.any());
             Mockito.doReturn(dbmsop).when(state).getDbmsSpecificOptions();
             Mockito.doReturn(creates).when(state).getHistory();
-            Mockito.doReturn(queries).when(spyOracle).getSQLQueries();
+            Mockito.doReturn("database0").when(state).getDatabaseName();
+            Mockito.doNothing().when(manager).incrementSelectQueryCount();
+            Mockito.doReturn(manager).when(state).getManager();
+            
             Mockito.doReturn("c1").when(state).getRandomIntColumnString(Mockito.any());
             Mockito.doReturn("c1;NUM").when(state).getRandomColumnStrings(Mockito.any());
+
+
+            Mockito.doReturn(queries).when(spyOracle).getSQLQueries();
         }catch(Exception e) {
             e.printStackTrace();
         }
@@ -73,8 +86,16 @@ public class TiDBPartitionTableOracleTest {
 
     @Test
     public void testTiDBPartitionTableOracle() {
-        try{
+        List<String> tmp = new ArrayList<String>();
+        tmp.add("100");
+        try(MockedStatic<ComparatorHelper> visitor = Mockito.mockStatic(ComparatorHelper.class)){
+            visitor.when(() -> ComparatorHelper.getResultSetFirstColumnAsString(Mockito.any(),Mockito.any(),Mockito.any()))
+              .thenReturn(tmp);
+            //state.initHistory();
             spyOracle.check();
+            System.out.println(state.getHistory());
+
+ 
         }catch(Exception e) {
             e.printStackTrace();
         }

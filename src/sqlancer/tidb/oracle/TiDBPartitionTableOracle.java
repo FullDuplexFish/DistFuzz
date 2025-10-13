@@ -124,7 +124,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
                     new_query = state.replaceStmtTableName(new_query, table, table + "_oracle");
                 }
             }
-            oracle_queries.add(query);
+            oracle_queries.add(new_query);
         }
 
 
@@ -135,6 +135,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
 
 
         for(String query: oracle_queries) {
+            //System.out.println("mutated query:" + query);
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
         ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
@@ -354,6 +355,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
                 }else{
                     replaceTableNameWithOracleNameInStmt(decodedStmt);
                 }
+                //System.out.println("oracle table stmt: " + decodedStmt.getStmt());
                 try{
                     state.executeStatement(new SQLQueryAdapter(decodedStmt.getStmt(), errors));
                 }catch(Exception e) {

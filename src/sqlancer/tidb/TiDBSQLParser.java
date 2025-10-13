@@ -26,6 +26,7 @@ public class TiDBSQLParser implements SQLParser{
             cmdInfo.add(scriptPath);
             cmdInfo.add(dbname);
             cmdInfo.add(queryString);
+            //System.out.println(scriptPath + " " + dbname + " " + queryString);
             line = cmdExec.executeLinuxCmd(cmdInfo);
             
             // File file = new File("./tmp/stmt_parse_res_"+ uid);//seeds after refining are stored in seed_refine_res
