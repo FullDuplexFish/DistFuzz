@@ -62,6 +62,7 @@ func isSysTable(in *ast.TableName) bool{
 	}
 }
 func (v *parseVisitor) Enter(in ast.Node) (ast.Node, bool) {
+
 	if name, ok := in.(*ast.ColumnName); ok {
 		encodedStmt.Cols = append(encodedStmt.Cols, name.Name.O)
 	}
@@ -101,7 +102,7 @@ func parseStmt() {
 	(*astNode).Accept(v)
 }
 func main() {
-	fmt.Println("success1")
+	//fmt.Println("success1")
 	flag.Parse();
 
 
@@ -112,7 +113,7 @@ func main() {
 	// }
 	fmt.Println(*originalStmt)
 	encodedStmt.Stmt = strings.Trim(*originalStmt, " ")
-	encodedStmt.StmtType = 3
+	encodedStmt.StmtType = 1
 	encodedStmt.ParseSuccess = true
 	
 	parseStmt()
