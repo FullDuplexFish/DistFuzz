@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 	"math/rand"
-	"reflect"
+	//"reflect"
 	"strings"
 	"encoding/json"
 	"os"
@@ -51,7 +51,7 @@ func isSysTable(in *ast.TableName) bool{
 }
 func (v *refineVisitor) Enter(in ast.Node) (ast.Node, bool) {
 	if name, ok := in.(*ast.ColumnName); ok {
-		fmt.Println("refining " + name.Name.O)
+		//fmt.Println("refining " + name.Name.O)
 		if value, exists := transformMaps[name.Table.O + "." + name.Name.O]; exists {
 			name.Table.O = strings.Split(value, ".")[0]
 			name.Name.O = strings.Split(value, ".")[1]
@@ -100,7 +100,7 @@ func (v *refineVisitor) Enter(in ast.Node) (ast.Node, bool) {
 	//	if name.Schema.O == "" {
 	//		name.Schema.O = name.Schema.L
 	//	}
-		fmt.Println("refining " + name.Name.O)
+		//fmt.Println("refining " + name.Name.O)
 		if value, exists := transformMaps[name.Name.O]; exists {
 			name.Name.O = value
 			name.Name.L = value
@@ -115,7 +115,7 @@ func (v *refineVisitor) Enter(in ast.Node) (ast.Node, bool) {
 		
 	}
 
-	fmt.Println("type is ", reflect.TypeOf(in).String(), "value is ", in)
+	//fmt.Println("type is ", reflect.TypeOf(in).String(), "value is ", in)
 
 	return in, false
 }
@@ -149,7 +149,7 @@ func refineSQL(sql string) string {
 }
 func restoreSql(astNode *ast.StmtNode) string{
 	var sb strings.Builder
-	restoreFlags := format.RestoreStringSingleQuotes | format.RestoreNameBackQuotes | format.RestoreStringWithoutCharset
+	restoreFlags := format.RestoreStringWithoutCharset
 	restoreCtx := format.NewRestoreCtx(restoreFlags, &sb)
 	errs := (*astNode).Restore(restoreCtx)
 	if errs != nil {
@@ -193,6 +193,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 	jsonStr := os.Args[1]
 	stmt = os.Args[2]
+	//fmt.Println("args " + jsonStr + stmt)
 	tcmaps.Maps = make(map[string][]string)
 	transformMaps = make(map[string]string)
     
@@ -202,7 +203,7 @@ func main() {
         return
     }
 
-    fmt.Printf("Config: %+v\n", tablesAndColumns)
+
 	for _, value := range tablesAndColumns.Tables {
 
 		for _, value2 := range tablesAndColumns.Columns {
@@ -211,7 +212,7 @@ func main() {
 			}
 		}
 	}
-	fmt.Println(stmt)
+
 	fmt.Println(refineSQL(stmt))
 
 	// flag.Parse();

@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import com.google.auto.service.AutoService;
 
 import sqlancer.AbstractAction;
+import sqlancer.AbstractSeedPool;
 import sqlancer.DatabaseProvider;
 import sqlancer.IgnoreMeException;
 import sqlancer.MainOptions;
@@ -77,6 +78,14 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
 
     public static class TiDBGlobalState extends SQLGlobalState<TiDBOptions, TiDBSchema> {
         public boolean hasPolicy = false;
+        private TiDBSeedPool seedPool;
+
+        public void setSeedPool(TiDBSeedPool seedPool) {
+            this.seedPool = seedPool;
+        }
+        public TiDBSeedPool getSeedPool() {
+            return seedPool;
+        }
         @Override
         protected TiDBSchema readSchema() throws SQLException {
             return TiDBSchema.fromConnection(getConnection(), getDatabaseName());
@@ -179,6 +188,9 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
 
     }
     public void initDatabase(TiDBGlobalState globalState) throws Exception {
+        globalState.setSeedPool(TiDBSeedPool.getInstance(globalState));
+        globalState.getSeedPool().initPool("./src/sqlancer/tidb/TiDBSeeds");
+        
         if(globalState.hasPolicy == false){
             try{
                 globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p1 primary_region=\"region1\", regions=\"region1,region2, region3\";"));
@@ -233,6 +245,8 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         errors.add("doesn't exist");
         errors.add("No database selected");
         errors.add("not BASE TABLE");
+        errors.add("Information schema is changed during the execution of the statement");
+        errors.add("A CLUSTERED INDEX must include all columns in the table's partitioning function");
     }
 
     @Override
@@ -246,7 +260,13 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         for (int i = 0; i < Randomly.fromOptions(1, 2); i++) {
             boolean success;
             do {
-                SQLQueryAdapter qt = new TiDBTableGenerator().getQuery(globalState);
+                SQLQueryAdapter qt = null;
+                if(globalState.getRandomly().getBoolean() && !globalState.getSeedPool().getDDLSeedPool().isEmpty()) {
+                    qt = new SQLQueryAdapter(globalState.getSeedPool().getDDLSeed().getStmt(), globalState.getExpectedErrors(), true);
+                }else{
+                    qt = new TiDBTableGenerator().getQuery(globalState);
+                }
+                
                 success = globalState.executeStatement(qt);
                 if(success) {
                     globalState.insertIntoHistory(qt.getQueryString());

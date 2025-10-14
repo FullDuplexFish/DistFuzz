@@ -28,6 +28,7 @@ public class DecodedStmt {
     public List<String> getTables() {
         return tables;
     }
+
     public void setTables(List<String> tables) {
         this.tables = tables;
     }
