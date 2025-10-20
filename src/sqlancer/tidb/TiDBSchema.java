@@ -217,7 +217,7 @@ public class TiDBSchema extends AbstractSchema<TiDBGlobalState, TiDBTable> {
         return count;
     }
 
-    private static TiDBCompositeDataType getColumnType(String typeString) {
+    public static TiDBCompositeDataType getColumnType(String typeString) {
         String trimmedStringType = typeString.replace(" zerofill", "").replace(" unsigned", "");
         if (trimmedStringType.contains("decimal")) {
             return new TiDBCompositeDataType(TiDBDataType.DECIMAL);
