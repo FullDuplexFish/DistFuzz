@@ -22,6 +22,8 @@ import sqlancer.SQLConnection;
 import sqlancer.SQLGlobalState;
 import sqlancer.SQLProviderAdapter;
 import sqlancer.StatementExecutor;
+import sqlancer.common.DecodedStmt;
+import sqlancer.common.DecodedStmt.stmtType;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLQueryProvider;
@@ -89,6 +91,18 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         @Override
         protected TiDBSchema readSchema() throws SQLException {
             return TiDBSchema.fromConnection(getConnection(), getDatabaseName());
+        }
+        public void addHistoryToSeedPool() {
+            for(String stmt: getHistory()) {
+                DecodedStmt decodedStmt = TiDBSQLParser.parse(stmt, getDatabaseName());
+                if(decodedStmt.getStmtType() == stmtType.DDL) {
+                    getSeedPool().addToDDLSeedPool(decodedStmt);
+                }else if(decodedStmt.getStmtType() == stmtType.DML) {
+                    getSeedPool().addToDMLSeedPool(decodedStmt);
+                }else if(decodedStmt.getStmtType() == stmtType.DQL) {
+                    getSeedPool().addToDQLSeedPool(decodedStmt);
+                }
+            }
         }
         public String getRandomIntColumnString(String table_name) {
             try {
@@ -253,11 +267,12 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
     public void generateDatabase(TiDBGlobalState globalState) throws Exception {
         initDatabase(globalState);
         updateExpectedErrors(globalState.getExpectedErrors());
+        globalState.setSeedPool(TiDBSeedPool.getInstance(globalState));
         if(globalState.getHistory() == null) {
             globalState.initHistory();
         }
         globalState.clearHistory();
-        for (int i = 0; i < Randomly.fromOptions(1, 2); i++) {
+        for (int i = 0; i < Randomly.fromOptions(1, 3); i++) {
             boolean success;
             do {
                 SQLQueryAdapter qt = null;
@@ -273,23 +288,37 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
                 }
             } while (!success);
         }
-
-        StatementExecutor<TiDBGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),
+        if(globalState.getRandomly().getBoolean() && globalState.getSeedPool().getDMLSeedPool().size() > 0) {
+            StatementExecutor<TiDBGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),
                 TiDBProvider::mapActions, (q) -> {
                     if (globalState.getSchema().getDatabaseTables().isEmpty()) {
                         throw new IgnoreMeException();
                     }
                 });
-        try {
-            se.executeStatements();
-        } catch (SQLException e) {
-            if (e.getMessage().contains(
-                    "references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")) {
-                throw new IgnoreMeException(); // TODO: drop view instead
-            } else {
-                throw new AssertionError(e);
+            try {
+                se.executeStatements();
+            } catch (SQLException e) {
+                if (e.getMessage().contains(
+                        "references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")) {
+                    throw new IgnoreMeException(); // TODO: drop view instead
+                } else {
+                    throw new AssertionError(e);
+                }
+            }
+        }else{
+            try{
+                for(int i = 0; i < Math.min(30, globalState.getSeedPool().getDMLSeedPool().size()); i ++ ) {
+                    SQLQueryAdapter qt = new SQLQueryAdapter(globalState.getSeedPool().refineSQL(globalState.getSeedPool().getDMLSeed()).getStmt(), globalState.getExpectedErrors(), true);
+                    boolean success = globalState.executeStatement(qt);
+                    if(success) {
+                        globalState.insertIntoHistory(qt.getQueryString());
+                    }
+                }
+            }catch(Exception e) {
+                e.printStackTrace();
             }
         }
+        
 
         if (globalState.getDbmsSpecificOptions().getTestOracleFactory().stream()
                 .anyMatch((o) -> o == TiDBOracleFactory.CERT)) {

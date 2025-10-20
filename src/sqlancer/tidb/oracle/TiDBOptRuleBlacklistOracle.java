@@ -13,6 +13,8 @@ import java.util.Random;
 import sqlancer.ComparatorHelper;
 import sqlancer.Randomly;
 import sqlancer.SQLGlobalState;
+import sqlancer.common.DecodedStmt;
+import sqlancer.common.DecodedStmt.stmtType;
 import sqlancer.common.oracle.TestOracle;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
@@ -20,6 +22,7 @@ import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.tidb.TiDBErrors;
 import sqlancer.tidb.TiDBExpressionGenerator;
 import sqlancer.tidb.TiDBOptions;
+import sqlancer.tidb.TiDBSQLParser;
 import sqlancer.tidb.TiDBProvider.TiDBGlobalState;
 import sqlancer.tidb.TiDBSchema.TiDBTables;
 import sqlancer.tidb.TiDBSchema.TiDBColumn;
@@ -39,7 +42,6 @@ public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
     private TiDBSelect select;
     private final ExpectedErrors errors = new ExpectedErrors();
 
-    private List<String> history;
 
     public TiDBOptRuleBlacklistOracle(TiDBGlobalState globalState) {
         state = globalState;
@@ -130,8 +132,13 @@ public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
         for(String query: queries) {
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
-        ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
-
+        String assertionMessage = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
+        
+        
+        if(assertionMessage != null) {
+            state.addHistoryToSeedPool();
+            throw new AssertionError(assertionMessage);
+        }
         
         state.getManager().incrementSelectQueryCount((long)queries.size());
     }

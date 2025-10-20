@@ -11,6 +11,7 @@ public class DecodedStmt {
     stmtType type;
     List<String> tables;
     List<String> cols;
+    List<String> colsType;
     boolean parseSuccess;
 
     public String getStmt() {
@@ -37,6 +38,12 @@ public class DecodedStmt {
     }
     public void setCols(List<String> cols) {
         this.cols = cols;
+    }
+    public List<String> getColsType() {
+        return colsType;
+    }
+    public void setColsType(List<String> colsType) {
+        this.colsType = colsType;
     }
     public boolean getParseSuccess() {
         return parseSuccess;

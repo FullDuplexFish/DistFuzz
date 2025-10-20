@@ -178,8 +178,11 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
         for(String query: queries) {
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
-        ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
-
+        String assertionMessage = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
+        if(assertionMessage != null) {
+            state.addHistoryToSeedPool();
+            throw new AssertionError(assertionMessage);
+        }
         
         state.getManager().incrementSelectQueryCount((long)queries.size());
     }

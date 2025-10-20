@@ -138,8 +138,11 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             //System.out.println("mutated query:" + query);
             secondResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
-        ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, oracle_queries, state);//checkresults by batch
-
+        String assertionMessage = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, oracle_queries, state);//checkresults by batch
+        if(assertionMessage != null) {
+            state.addHistoryToSeedPool();
+            throw new AssertionError(assertionMessage);
+        }
         
         state.getManager().incrementSelectQueryCount((long)queries.size());
     }

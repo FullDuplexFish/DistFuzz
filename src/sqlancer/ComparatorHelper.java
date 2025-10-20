@@ -127,7 +127,11 @@ public final class ComparatorHelper {
             throw new AssertionError(assertionMessage);
         }
     }
-    public static void assumeResultSetsAreEqualByBatch(List<String> resultSet, List<String> secondResultSet,
+    /*
+     * return assertion message if find bug
+     * return null if didn't find bug
+     */
+    public static String assumeResultSetsAreEqualByBatch(List<String> resultSet, List<String> secondResultSet,
     List<String> originalQueryStrings, List<String> queryStringsToCompare, SQLGlobalState<?, ?> state) {
         if (resultSet.size() != secondResultSet.size()) {
             String queryFormatString = "-- %s;" + System.lineSeparator() + "-- cardinality: %d"
@@ -144,7 +148,8 @@ public final class ComparatorHelper {
                             + "Second query:\"%s\", whose cardinality is: %d",
                     resultSet.size(), secondResultSet.size(), originalQueryString, resultSet.size(),
                     combinedQueryString, secondResultSet.size());
-            throw new AssertionError(assertionMessage);
+            //throw new AssertionError(assertionMessage);
+            return assertionMessage;
         }
 
         Set<String> firstHashSet = new HashSet<>(resultSet);
@@ -169,8 +174,10 @@ public final class ComparatorHelper {
             String assertionMessage = String.format("The content of the result sets mismatch!" + System.lineSeparator()
                     + "First query : \"%s\"" + System.lineSeparator() + "Second query: \"%s\"", originalQueryString,
                     secondQueryString);
-            throw new AssertionError(assertionMessage);
+            //throw new AssertionError(assertionMessage);
+            return assertionMessage;
         }
+        return null;
     }
     public static void assumeResultSetsAreEqual(List<String> resultSet, List<String> secondResultSet,
             String originalQueryString, List<String> combinedString, SQLGlobalState<?, ?> state,
