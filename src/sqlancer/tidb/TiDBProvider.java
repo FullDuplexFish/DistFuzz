@@ -31,6 +31,12 @@ import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.tidb.TiDBProvider.TiDBGlobalState;
 import sqlancer.tidb.TiDBSchema.TiDBColumn;
 import sqlancer.tidb.TiDBSchema.TiDBTable;
+import sqlancer.tidb.TiDBSchema.TiDBTables;
+import sqlancer.tidb.ast.TiDBColumnReference;
+import sqlancer.tidb.ast.TiDBExpression;
+import sqlancer.tidb.ast.TiDBJoin;
+import sqlancer.tidb.ast.TiDBSelect;
+import sqlancer.tidb.ast.TiDBTableReference;
 import sqlancer.tidb.gen.TiDBAlterTableGenerator;
 import sqlancer.tidb.gen.TiDBAnalyzeTableGenerator;
 import sqlancer.tidb.gen.TiDBDeleteGenerator;
@@ -42,6 +48,7 @@ import sqlancer.tidb.gen.TiDBSetGenerator;
 import sqlancer.tidb.gen.TiDBTableGenerator;
 import sqlancer.tidb.gen.TiDBUpdateGenerator;
 import sqlancer.tidb.gen.TiDBViewGenerator;
+import sqlancer.tidb.visitor.TiDBVisitor;
 
 @AutoService(DatabaseProvider.class)
 public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOptions> {
@@ -124,6 +131,57 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             }
             return null;
             
+        }
+        public String getSQLQueriesByGeneration() {
+            TiDBTables tables = this.getSchema().getRandomTableNonEmptyTables();
+            TiDBExpressionGenerator gen = new TiDBExpressionGenerator(this).setColumns(tables.getColumns());
+            TiDBSelect select = new TiDBSelect();
+
+            List<TiDBExpression> fetchColumns = new ArrayList<>();
+            fetchColumns.addAll(Randomly.nonEmptySubset(tables.getColumns()).stream().map(c -> new TiDBColumnReference(c))
+                    .collect(Collectors.toList()));
+            select.setFetchColumns(fetchColumns);
+
+            List<TiDBExpression> tableList = tables.getTables().stream().map(t -> new TiDBTableReference(t))
+                    .collect(Collectors.toList());
+            List<TiDBExpression> joins = TiDBJoin.getJoins(tableList, this).stream().collect(Collectors.toList());
+            select.setJoinList(joins);
+            select.setFromList(tableList);
+            if (Randomly.getBoolean()) {
+                select.setWhereClause(gen.generateExpression());
+            }
+            if (Randomly.getBooleanWithRatherLowProbability()) {
+                select.setOrderByClauses(gen.generateOrderBys());
+            }
+            if (Randomly.getBoolean()) {
+                select.setLimitClause(gen.generateExpression());
+            }
+            if (Randomly.getBoolean()) {
+                select.setOffsetClause(gen.generateExpression());
+            }
+
+            String originalQueryString = TiDBVisitor.asString(select);
+            return originalQueryString;
+        }
+        public List<String> getSQLQueries() {
+            List<String> res = new ArrayList<String>();
+            if(this.getRandomly().getBoolean()) {//get queries by generation
+                for(int i = 0; i < ((TiDBOptions)this.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
+                    res.add(getSQLQueriesByGeneration());
+                }
+            }else{                                //get queries from seed pool
+                for(int i = 0; i < ((TiDBOptions)this.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
+                    res.add(this.getSeedPool().getDQLSeed().getStmt());
+                }
+            }
+            return res;
+        }
+        public List<String> mutateSQLQueries(List<String> sqls) {
+            List<String> res = new ArrayList<String>();
+            for(String sql: sqls) {
+                res.addAll(new TiDBMutator(this, sql).mutateSQL());
+            }
+            return res;
         }
         /*
          * This function return random columns like 'col1,col2;NUM,TEXT'
@@ -262,7 +320,11 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         errors.add("Information schema is changed during the execution of the statement");
         errors.add("A CLUSTERED INDEX must include all columns in the table's partitioning function");
     }
-
+    List<String> mutateSeed(TiDBGlobalState state, String sql) {
+        TiDBMutator mutator = new TiDBMutator(state, sql);
+        List<String> res = mutator.mutateSQL();
+        return res;
+    }
     @Override
     public void generateDatabase(TiDBGlobalState globalState) throws Exception {
         initDatabase(globalState);
@@ -273,20 +335,26 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         }
         globalState.clearHistory();
         for (int i = 0; i < Randomly.fromOptions(1, 3); i++) {
-            boolean success;
+            boolean allSuccess = false;
             do {
                 SQLQueryAdapter qt = null;
-                if(globalState.getRandomly().getBoolean() && !globalState.getSeedPool().getDDLSeedPool().isEmpty()) {
+                if(globalState.getRandomly().getBoolean() && !globalState.getSeedPool().getDDLSeedPool().isEmpty()) {//优先跑种子池
                     qt = new SQLQueryAdapter(globalState.getSeedPool().getDDLSeed().getStmt(), globalState.getExpectedErrors(), true);
                 }else{
                     qt = new TiDBTableGenerator().getQuery(globalState);
                 }
-                
-                success = globalState.executeStatement(qt);
-                if(success) {
-                    globalState.insertIntoHistory(qt.getQueryString());
+                List<String> mutatedSeed = mutateSeed(globalState, qt.getQueryString());
+                for(String sql: mutatedSeed) {
+                    qt = new SQLQueryAdapter(sql, globalState.getExpectedErrors(), true);
+                    boolean success = globalState.executeStatement(qt);
+                    if(success) {
+                        allSuccess = true;
+                        globalState.insertIntoHistory(qt.getQueryString());
+                    }
+
                 }
-            } while (!success);
+                
+            } while (!allSuccess);
         }
         if(globalState.getRandomly().getBoolean() && globalState.getSeedPool().getDMLSeedPool().size() > 0) {
             StatementExecutor<TiDBGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),

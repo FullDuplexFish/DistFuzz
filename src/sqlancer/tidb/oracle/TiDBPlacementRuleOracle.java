@@ -57,55 +57,10 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
 
     @Override
     public void check() throws Exception {
-        List<String> queries = getSQLQueries();
+        List<String> queries = state.mutateSQLQueries(state.getSQLQueries());
         placement_rule_oracle(queries);
     }
 
-
-    public String getSQLQueriesByGeneration() {
-        TiDBTables tables = state.getSchema().getRandomTableNonEmptyTables();
-        gen = new TiDBExpressionGenerator(state).setColumns(tables.getColumns());
-        select = new TiDBSelect();
-
-        List<TiDBExpression> fetchColumns = new ArrayList<>();
-        fetchColumns.addAll(Randomly.nonEmptySubset(tables.getColumns()).stream().map(c -> new TiDBColumnReference(c))
-                .collect(Collectors.toList()));
-        select.setFetchColumns(fetchColumns);
-
-        List<TiDBExpression> tableList = tables.getTables().stream().map(t -> new TiDBTableReference(t))
-                .collect(Collectors.toList());
-        List<TiDBExpression> joins = TiDBJoin.getJoins(tableList, state).stream().collect(Collectors.toList());
-        select.setJoinList(joins);
-        select.setFromList(tableList);
-        if (Randomly.getBoolean()) {
-            select.setWhereClause(gen.generateExpression());
-        }
-        if (Randomly.getBooleanWithRatherLowProbability()) {
-            select.setOrderByClauses(gen.generateOrderBys());
-        }
-        if (Randomly.getBoolean()) {
-            select.setLimitClause(gen.generateExpression());
-        }
-        if (Randomly.getBoolean()) {
-            select.setOffsetClause(gen.generateExpression());
-        }
-
-        String originalQueryString = TiDBVisitor.asString(select);
-        return originalQueryString;
-    }
-    public List<String> getSQLQueries() {
-        List<String> res = new ArrayList<String>();
-        if(state.getRandomly().getBoolean()) {//get queries by generation
-            for(int i = 0; i < ((TiDBOptions)state.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
-                res.add(getSQLQueriesByGeneration());
-            }
-        }else{                                //get queries from seed pool
-            for(int i = 0; i < ((TiDBOptions)state.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
-                res.add(getSQLQueriesByGeneration());
-            }
-        }
-        return res;
-    }
     public void changePolicy(String chosen_table){
 	    
         try{

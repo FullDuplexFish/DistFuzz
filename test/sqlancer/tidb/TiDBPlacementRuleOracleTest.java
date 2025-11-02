@@ -43,7 +43,7 @@ public class TiDBPlacementRuleOracleTest {
         spyOracle = Mockito.spy(oracle);
     
         //Mockito.when(oracle.getSQLQueries()).thenReturn(queries);
-        Mockito.doReturn(queries).when(spyOracle).getSQLQueries();
+        Mockito.doReturn(queries).when(state).getSQLQueries();
         Mockito.doNothing().when(spyOracle).changePolicy("t1");
         Mockito.doNothing().when(spyOracle).changePolicy("t2");
     }

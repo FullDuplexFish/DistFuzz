@@ -1,5 +1,6 @@
 package sqlancer.tidb;
 
+
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -29,7 +30,7 @@ import sqlancer.tidb.oracle.TiDBPartitionTableOracle;
 import sqlancer.tidb.oracle.TiDBPlacementRuleOracle;
 import sqlancer.tidb.visitor.TiDBVisitor;
 
-public class TiDBPartitionTableOracleTest {
+public class TiDBMutatorTest {
 
     TiDBPartitionTableOracle oracle;
     TiDBPartitionTableOracle spyOracle;
@@ -85,7 +86,7 @@ public class TiDBPartitionTableOracleTest {
     }
 
     @Test
-    public void testTiDBPartitionTableOracle() {
+    public void testMutateDDL() {
         List<String> tmp = new ArrayList<String>();
         tmp.add("100");
         try(MockedStatic<ComparatorHelper> visitor = Mockito.mockStatic(ComparatorHelper.class)){
@@ -102,3 +103,4 @@ public class TiDBPartitionTableOracleTest {
     }
 
 }
+
