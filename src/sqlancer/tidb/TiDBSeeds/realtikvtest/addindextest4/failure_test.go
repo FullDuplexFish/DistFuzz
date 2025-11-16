@@ -26,14 +26,13 @@ import (
 	"github.com/pingcap/tidb/pkg/config"
 	"github.com/pingcap/tidb/pkg/domain"
 	"github.com/pingcap/tidb/pkg/kv"
-	"github.com/pingcap/tidb/pkg/meta/model"
+	"github.com/pingcap/tidb/pkg/parser/model"
 	"github.com/pingcap/tidb/pkg/testkit"
 	"github.com/pingcap/tidb/tests/realtikvtest"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAddIndexIngestRecoverPartition(t *testing.T) {
-	t.Skip("the test is too hacky, use another way to test")
 	partCnt := 0
 	block := make(chan struct{})
 	ExecuteBlocks(t, func() {
@@ -53,7 +52,7 @@ func TestAddIndexIngestRecoverPartition(t *testing.T) {
 			partCnt++
 			if partCnt == 2 {
 				dom.DDL().OwnerManager().ResignOwner(context.Background())
-				dom.InfoSyncer().ServerInfoSyncer().RemoveServerInfo()
+				dom.InfoSyncer().RemoveServerInfo()
 				os.Exit(0) // Mock TiDB exit abnormally. We use zero because the requirement of `ExecuteBlocks()`.
 			}
 		})
@@ -73,11 +72,13 @@ func TestAddIndexIngestRecoverPartition(t *testing.T) {
 			partCnt++
 			if partCnt == 2 {
 				dom.DDL().OwnerManager().ResignOwner(context.Background())
-				dom.InfoSyncer().ServerInfoSyncer().RemoveServerInfo()
+				dom.InfoSyncer().RemoveServerInfo()
 				os.Exit(0)
 			}
 		})
-		store, dom = realtikvtest.CreateMockStoreAndDomainAndSetup(t, realtikvtest.WithRetainData())
+		realtikvtest.RetainOldData = true
+		store, dom = realtikvtest.CreateMockStoreAndDomainAndSetup(t)
+		realtikvtest.RetainOldData = false
 		tk := testkit.NewTestKit(t, store)
 		tk.MustQuery("select 1;").Check(testkit.Rows("1"))
 		<-block // block forever until os.Exit(0).
@@ -91,7 +92,9 @@ func TestAddIndexIngestRecoverPartition(t *testing.T) {
 		config.UpdateGlobal(func(conf *config.Config) {
 			conf.Port += 2
 		})
-		store := realtikvtest.CreateMockStoreAndSetup(t, realtikvtest.WithRetainData())
+		realtikvtest.RetainOldData = true
+		store := realtikvtest.CreateMockStoreAndSetup(t)
+		realtikvtest.RetainOldData = false
 		tk := testkit.NewTestKit(t, store)
 		tk.MustExec("use addindexlit;")
 		<-block

@@ -17,7 +17,7 @@ package addindextest
 import (
 	"testing"
 
-	"github.com/pingcap/tidb/tests/realtikvtest/testutils"
+	"github.com/pingcap/tidb/tests/realtikvtest/addindextestutil"
 )
 
 func TestMultiSchemaChangeCreateNonUniqueIndex(t *testing.T) {
@@ -26,9 +26,9 @@ func TestMultiSchemaChangeCreateNonUniqueIndex(t *testing.T) {
 		{2, 5, 8},
 		{3, 6, 9},
 	}
-	ctx := testutils.InitCompCtx(t)
+	ctx := addindextestutil.InitCompCtx(t)
 	ctx.CompCtx.IsMultiSchemaChange = true
-	testutils.TestOneColFrame(ctx, colIDs, testutils.AddIndexNonUnique)
+	addindextestutil.TestOneColFrame(ctx, colIDs, addindextestutil.AddIndexNonUnique)
 }
 
 func TestMultiSchemaChangeCreateUniqueIndex(t *testing.T) {
@@ -37,21 +37,21 @@ func TestMultiSchemaChangeCreateUniqueIndex(t *testing.T) {
 		{2, 19},
 		{11},
 	}
-	ctx := testutils.InitCompCtx(t)
+	ctx := addindextestutil.InitCompCtx(t)
 	ctx.CompCtx.IsMultiSchemaChange = true
-	testutils.TestOneColFrame(ctx, colIDs, testutils.AddIndexUnique)
+	addindextestutil.TestOneColFrame(ctx, colIDs, addindextestutil.AddIndexUnique)
 }
 
 func TestMultiSchemaChangeCreatePrimaryKey(t *testing.T) {
-	ctx := testutils.InitCompCtx(t)
+	ctx := addindextestutil.InitCompCtx(t)
 	ctx.CompCtx.IsMultiSchemaChange = true
-	testutils.TestOneIndexFrame(ctx, 0, testutils.AddIndexPK)
+	addindextestutil.TestOneIndexFrame(ctx, 0, addindextestutil.AddIndexPK)
 }
 
 func TestMultiSchemaChangeCreateGenColIndex(t *testing.T) {
-	ctx := testutils.InitCompCtx(t)
+	ctx := addindextestutil.InitCompCtx(t)
 	ctx.CompCtx.IsMultiSchemaChange = true
-	testutils.TestOneIndexFrame(ctx, 29, testutils.AddIndexGenCol)
+	addindextestutil.TestOneIndexFrame(ctx, 29, addindextestutil.AddIndexGenCol)
 }
 
 func TestMultiSchemaChangeMultiColsIndex(t *testing.T) {
@@ -65,7 +65,7 @@ func TestMultiSchemaChangeMultiColsIndex(t *testing.T) {
 		{14},
 		{18},
 	}
-	ctx := testutils.InitCompCtx(t)
+	ctx := addindextestutil.InitCompCtx(t)
 	ctx.CompCtx.IsMultiSchemaChange = true
-	testutils.TestTwoColsFrame(ctx, coliIDs, coljIDs, testutils.AddIndexMultiCols)
+	addindextestutil.TestTwoColsFrame(ctx, coliIDs, coljIDs, addindextestutil.AddIndexMultiCols)
 }

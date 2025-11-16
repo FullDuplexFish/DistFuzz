@@ -49,6 +49,7 @@ public abstract class ProviderAdapter<G extends GlobalState<O, ? extends Abstrac
     @Override
     public Reproducer<G> generateAndTestDatabase(G globalState) throws Exception {
         try {
+            
             generateDatabase(globalState);
             checkViewsAreValid(globalState);
             globalState.getManager().incrementCreateDatabase();

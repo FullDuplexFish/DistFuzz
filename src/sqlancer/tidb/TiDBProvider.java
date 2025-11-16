@@ -100,14 +100,21 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             return TiDBSchema.fromConnection(getConnection(), getDatabaseName());
         }
         public void addHistoryToSeedPool() {
-            for(String stmt: getHistory()) {
-                DecodedStmt decodedStmt = TiDBSQLParser.parse(stmt, getDatabaseName());
+            for(String str: getHistory()) {
+                /*DecodedStmt decodedStmt = TiDBSQLParser.parse(stmt, getDatabaseName());
                 if(decodedStmt.getStmtType() == stmtType.DDL) {
                     getSeedPool().addToDDLSeedPool(decodedStmt);
                 }else if(decodedStmt.getStmtType() == stmtType.DML) {
                     getSeedPool().addToDMLSeedPool(decodedStmt);
                 }else if(decodedStmt.getStmtType() == stmtType.DQL) {
                     getSeedPool().addToDQLSeedPool(decodedStmt);
+                }*/
+                if(str.toLowerCase().startsWith("create")) {
+                    getSeedPool().addToDDLSeedPool(str);
+                }else if(str.toLowerCase().startsWith("select")) {
+                    getSeedPool().addToDQLSeedPool(str);
+                }else{
+                    getSeedPool().addToDMLSeedPool(str);
                 }
             }
         }
@@ -171,7 +178,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
                 }
             }else{                                //get queries from seed pool
                 for(int i = 0; i < ((TiDBOptions)this.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
-                    res.add(this.getSeedPool().getDQLSeed().getStmt());
+                    res.add(TiDBSQLParser.refineSQL(this.getSeedPool().getDQLSeed()));
                 }
             }
             return res;
@@ -261,7 +268,9 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
     }
     public void initDatabase(TiDBGlobalState globalState) throws Exception {
         globalState.setSeedPool(TiDBSeedPool.getInstance(globalState));
+        //globalState.getLogger().writeCurrent("starting init seedpool");
         globalState.getSeedPool().initPool("./src/sqlancer/tidb/TiDBSeeds");
+        //globalState.getLogger().writeCurrent("finish init seedpool");
         
         if(globalState.hasPolicy == false){
             try{
@@ -327,6 +336,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
     }
     @Override
     public void generateDatabase(TiDBGlobalState globalState) throws Exception {
+        TiDBSQLParser.setGlobalState(globalState);
         initDatabase(globalState);
         updateExpectedErrors(globalState.getExpectedErrors());
         globalState.setSeedPool(TiDBSeedPool.getInstance(globalState));
@@ -339,7 +349,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             do {
                 SQLQueryAdapter qt = null;
                 if(globalState.getRandomly().getBoolean() && !globalState.getSeedPool().getDDLSeedPool().isEmpty()) {//优先跑种子池
-                    qt = new SQLQueryAdapter(globalState.getSeedPool().getDDLSeed().getStmt(), globalState.getExpectedErrors(), true);
+                    qt = new SQLQueryAdapter(globalState.getSeedPool().getDDLSeed(), globalState.getExpectedErrors(), true);
                 }else{
                     qt = new TiDBTableGenerator().getQuery(globalState);
                 }
@@ -357,6 +367,20 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             } while (!allSuccess);
         }
         if(globalState.getRandomly().getBoolean() && globalState.getSeedPool().getDMLSeedPool().size() > 0) {
+            
+
+            try{
+                for(int i = 0; i < Math.min(globalState.getRandomly().getNotCachedInteger(3, 10), globalState.getSeedPool().getDMLSeedPool().size()); i ++ ) {
+                    SQLQueryAdapter qt = new SQLQueryAdapter(globalState.getSeedPool().refineSQL(globalState.getSeedPool().getDMLSeed()), globalState.getExpectedErrors(), true);
+                    boolean success = globalState.executeStatement(qt);
+                    if(success) {
+                        globalState.insertIntoHistory(qt.getQueryString());
+                    }
+                }
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+        }else{
             StatementExecutor<TiDBGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),
                 TiDBProvider::mapActions, (q) -> {
                     if (globalState.getSchema().getDatabaseTables().isEmpty()) {
@@ -372,18 +396,6 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
                 } else {
                     throw new AssertionError(e);
                 }
-            }
-        }else{
-            try{
-                for(int i = 0; i < Math.min(30, globalState.getSeedPool().getDMLSeedPool().size()); i ++ ) {
-                    SQLQueryAdapter qt = new SQLQueryAdapter(globalState.getSeedPool().refineSQL(globalState.getSeedPool().getDMLSeed()).getStmt(), globalState.getExpectedErrors(), true);
-                    boolean success = globalState.executeStatement(qt);
-                    if(success) {
-                        globalState.insertIntoHistory(qt.getQueryString());
-                    }
-                }
-            }catch(Exception e) {
-                e.printStackTrace();
             }
         }
         

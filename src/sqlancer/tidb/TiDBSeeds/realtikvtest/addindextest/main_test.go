@@ -28,8 +28,7 @@ var FullMode = flag.Bool("full-mode", false, "whether tests run in full mode")
 
 func TestMain(m *testing.M) {
 	config.UpdateGlobal(func(conf *config.Config) {
-		conf.Store = config.StoreTypeTiKV
+		conf.Store = "tikv"
 	})
-	realtikvtest.UpdateTiDBConfig()
 	realtikvtest.RunTestMain(m)
 }

@@ -136,6 +136,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
         String assertionMessage = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, queries, state);//checkresults by batch
         if(assertionMessage != null) {
             state.addHistoryToSeedPool();
+            state.getManager().incrementSelectQueryCount((long)queries.size());
             throw new AssertionError(assertionMessage);
         }
         

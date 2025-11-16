@@ -995,6 +995,7 @@ insert into test_gc_read_1(a, b) values (1, null);
 insert into test_gc_read_2(a, b) values (1, null);
 
 # TestSelectPartition
+set @@session.tidb_enable_list_partition = ON;
 drop table if exists th, tr, tl;
 create table th (a int, b int) partition by hash(a) partitions 3;
 create table tr (a int, b int)
@@ -1045,6 +1046,7 @@ select * from tscalar where c1 in (40);
 select * from tscalar where c1 in (-40);
 select * from tscalar where c1 in (-40, -40);
 select * from tscalar where c1 in (-1);
+set @@session.tidb_enable_list_partition = default;
 
 # TestPrepareLoadData
 -- error 1295
@@ -1408,10 +1410,6 @@ select a from (select 1 a) `x`, (select 2 a) `x`;
 select x.a from (select 1 a) `x`, (select 2 a) `x`;
 -- error 1248
 select a from (select 1 a), (select 2 a);
--- error 1248
-select * from (select 1 union select 1);
--- error 1248
-select * from (select 1 INTERSECT select 1);
 set sql_mode = 'oracle';
 select a, b from (select 1 a) ``, (select 2 b) ``;
 select a, b from (select 1 a) `x`, (select 2 b) `x`;
@@ -1424,12 +1422,11 @@ select a from (select 1 a) `x`, (select 2 a) `x`;
 select x.a from (select 1 a) `x`, (select 2 a) `x`;
 -- error 1052
 select a from (select 1 a), (select 2 a);
-select * from (select 1 union select 1);
-select * from (select 1 INTERSECT select 1);
 set sql_mode = default;
 
 # TestSelectHashPartitionTable
 drop table if exists th;
+set @@session.tidb_enable_table_partition = '1';
 create table th (a int, b int) partition by hash(a) partitions 3;
 insert into th values (0,0),(1,1),(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8);
 insert into th values (-1,-1),(-2,-2),(-3,-3),(-4,-4),(-5,-5),(-6,-6),(-7,-7),(-8,-8);
@@ -1437,6 +1434,7 @@ select b from th order by a;
 select * from th where a=-2;
 select * from th where a=5;
 drop table if exists th;
+set @@session.tidb_enable_table_partition = default;
 
 # TestSelectView
 drop table if exists view_t;
@@ -1501,31 +1499,31 @@ create table t3(a int, b decimal(30,10));
 insert into t1 values (1,1),(1,1),(2,2),(3,3),(null,null);
 insert into t2 values (1,'1'),(2,'2'),(null,null),(null,'3');
 insert into t3 values (2,2.1),(3,3);
-explain format = 'plan_tree' select * from t3 union select * from t1;
+explain format = 'brief' select * from t3 union select * from t1;
 --sorted_result
 select * from t3 union select * from t1;
-explain format = 'plan_tree' select * from t2 union all select * from t1;
+explain format = 'brief' select * from t2 union all select * from t1;
 --sorted_result
 select * from t2 union all select * from t1;
-explain format = 'plan_tree' select * from t1 except select * from t3;
+explain format = 'brief' select * from t1 except select * from t3;
 --sorted_result
 select * from t1 except select * from t3;
-explain format = 'plan_tree' select * from t1 intersect select * from t2;
+explain format = 'brief' select * from t1 intersect select * from t2;
 --sorted_result
 select * from t1 intersect select * from t2;
-explain format = 'plan_tree' select * from t1 union all select * from t2 union all select * from t3;
+explain format = 'brief' select * from t1 union all select * from t2 union all select * from t3;
 --sorted_result
 select * from t1 union all select * from t2 union all select * from t3;
-explain format = 'plan_tree' select * from t1 union all select * from t2 except select * from t3;
+explain format = 'brief' select * from t1 union all select * from t2 except select * from t3;
 --sorted_result
 select * from t1 union all select * from t2 except select * from t3;
-explain format = 'plan_tree' select * from t1 intersect select * from t2 intersect select * from t1;
+explain format = 'brief' select * from t1 intersect select * from t2 intersect select * from t1;
 --sorted_result
 select * from t1 intersect select * from t2 intersect select * from t1;
-explain format = 'plan_tree' select * from t1 union all select * from t2 intersect select * from t3;
+explain format = 'brief' select * from t1 union all select * from t2 intersect select * from t3;
 --sorted_result
 select * from t1 union all select * from t2 intersect select * from t3;
-explain format = 'plan_tree' select * from t1 except select * from t2 intersect select * from t3;
+explain format = 'brief' select * from t1 except select * from t2 intersect select * from t3;
 --sorted_result
 select * from t1 except select * from t2 intersect select * from t3;
 
@@ -1535,25 +1533,25 @@ set tidb_cost_model_version=2;
 drop table if exists t;
 create table t (c1 year(4), c2 int, key(c1));
 insert into t values(2001, 1);
-explain format = 'plan_tree' select t1.c1, t2.c1 from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
+explain format = 'brief' select t1.c1, t2.c1 from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
 --sorted_result
 select t1.c1, t2.c1 from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
-explain format = 'plan_tree' select * from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
+explain format = 'brief' select * from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
 --sorted_result
 select * from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
-explain format = 'plan_tree' select count(*) from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
+explain format = 'brief' select count(*) from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
 --sorted_result
 select count(*) from t as t1 inner join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
-explain format = 'plan_tree' select t1.c1, t2.c1 from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
+explain format = 'brief' select t1.c1, t2.c1 from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
 --sorted_result
 select t1.c1, t2.c1 from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
-explain format = 'plan_tree' select * from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
+explain format = 'brief' select * from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
 --sorted_result
 select * from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
-explain format = 'plan_tree' select count(*) from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
+explain format = 'brief' select count(*) from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
 --sorted_result
 select count(*) from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 != NULL;
-explain format = 'plan_tree' select * from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 is not NULL;
+explain format = 'brief' select * from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 is not NULL;
 --sorted_result
 select * from t as t1 left join t as t2 on t1.c1 = t2.c1 where t1.c1 is not NULL;
 
@@ -1566,43 +1564,43 @@ create table t3 like t1;
 insert into t1 values (1),(1),(2),(3),(null);
 insert into t2 values (1),(2),(null),(null);
 insert into t3 values (2),(3);
-explain format='plan_tree' select * from t3 union select * from t1;
+explain format='brief' select * from t3 union select * from t1;
 --sorted_result
 select * from t3 union select * from t1;
-explain format='plan_tree' select * from t2 union all select * from t1;
+explain format='brief' select * from t2 union all select * from t1;
 --sorted_result
 select * from t2 union all select * from t1;
-explain format='plan_tree' select * from t1 except select * from t3;
+explain format='brief' select * from t1 except select * from t3;
 --sorted_result
 select * from t1 except select * from t3;
-explain format='plan_tree' select * from t1 intersect select * from t2;
+explain format='brief' select * from t1 intersect select * from t2;
 --sorted_result
 select * from t1 intersect select * from t2;
-explain format='plan_tree' select * from t1 union all select * from t2 union all select * from t3;
+explain format='brief' select * from t1 union all select * from t2 union all select * from t3;
 --sorted_result
 select * from t1 union all select * from t2 union all select * from t3;
-explain format='plan_tree' select * from t1 union all select * from t2 except select * from t3;
+explain format='brief' select * from t1 union all select * from t2 except select * from t3;
 --sorted_result
 select * from t1 union all select * from t2 except select * from t3;
-explain format='plan_tree' select * from t1 intersect select * from t2 intersect select * from t1;
+explain format='brief' select * from t1 intersect select * from t2 intersect select * from t1;
 --sorted_result
 select * from t1 intersect select * from t2 intersect select * from t1;
-explain format='plan_tree' select * from t1 union all select * from t2 intersect select * from t3;
+explain format='brief' select * from t1 union all select * from t2 intersect select * from t3;
 --sorted_result
 select * from t1 union all select * from t2 intersect select * from t3;
-explain format='plan_tree' select * from t1 except select * from t2 intersect select * from t3;
+explain format='brief' select * from t1 except select * from t2 intersect select * from t3;
 --sorted_result
 select * from t1 except select * from t2 intersect select * from t3;
-explain format='plan_tree' select * from t1 intersect (select * from t2 except (select * from t3));
+explain format='brief' select * from t1 intersect (select * from t2 except (select * from t3));
 --sorted_result
 select * from t1 intersect (select * from t2 except (select * from t3));
-explain format='plan_tree' select * from t1 union all (select * from t2 except select * from t3);
+explain format='brief' select * from t1 union all (select * from t2 except select * from t3);
 --sorted_result
 select * from t1 union all (select * from t2 except select * from t3);
-explain format='plan_tree' select * from t1 union (select * from t2 union all select * from t3);
+explain format='brief' select * from t1 union (select * from t2 union all select * from t3);
 --sorted_result
 select * from t1 union (select * from t2 union all select * from t3);
-explain format='plan_tree' (select * from t1 intersect select * from t1) except (select * from t2 union select * from t3);
+explain format='brief' (select * from t1 intersect select * from t1) except (select * from t2 union select * from t3);
 --sorted_result
 (select * from t1 intersect select * from t1) except (select * from t2 union select * from t3);
 
@@ -1850,7 +1848,7 @@ admin check table b;
 set @@tidb_enable_clustered_index=On;
 drop table if exists t;
 create table t (a int, b int, c int, primary key(a,b));
-explain format = 'plan_tree' select t1.a from t t1 left join t t2 on t1.a = t2.a and t1.b = t2.b;
+explain format = 'brief' select t1.a from t t1 left join t t2 on t1.a = t2.a and t1.b = t2.b;
 set @@tidb_enable_clustered_index=default;
 
 # TestExecutorBit
@@ -2110,8 +2108,8 @@ insert tdouble values (10.23);
 set sql_mode = '';
 insert t values ();
 show warnings;
--- error 1048
 insert t values (null);
+show warnings;
 insert ignore t values (null);
 show warnings;
 insert t select null;
@@ -2563,8 +2561,6 @@ disconnect conn1;
 disconnect conn2;
 set global tidb_txn_mode=pessimistic;
 
-select 1 for update;
-
 # TestSelectForUpdateOf
 drop table if exists t, t1;
 create table t (i int);
@@ -2631,12 +2627,12 @@ create table t (id bigint key,b int);
 split table t by (10),(20),(30);
 insert into t values (0,0),(10,10),(20,20),(30,30);
 alter table t add index idx1(b);
---replace_column 1 <job_id> 4 <type> 6 <schema_id> 7 <table_id> 9 <create_time> 10 <start_time> 11 <end_time> 13 <comments>
+--replace_column 1 <job_id> 4 <type> 6 <schema_id> 7 <table_id> 9 <create_time> 10 <start_time> 11 <end_time>
 admin show ddl jobs 1;
 
 insert into t values (1,0),(2,10),(3,20),(4,30);
 alter table t add index idx2(b);
---replace_column 1 <job_id> 4 <type> 6 <schema_id> 7 <table_id> 9 <create_time> 10 <start_time> 11 <end_time> 13 <comments>
+--replace_column 1 <job_id> 4 <type> 6 <schema_id> 7 <table_id> 9 <create_time> 10 <start_time> 11 <end_time>
 admin show ddl jobs 1;
 
 # TestSummaryFailedUpdate
@@ -2712,9 +2708,6 @@ connection default;
 --replace_regex /server: .*session: .*/server: <server> session: <session>/
 --error 8020
 LOCK TABLE executor__executor.t WRITE, test2.t2 WRITE;
-
-connection conn1;
-unlock tables;
 
 disconnect conn1;
 unlock tables;

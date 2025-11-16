@@ -80,14 +80,15 @@ public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalSt
         @Override
         public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
                 throws SQLException {
-            return new TiDBPlacementRuleOracle(globalState);
+            return new TiDBOptRuleBlacklistOracle(globalState);
         }
     },
     PLACEMENT_RULE {
         @Override
         public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
                 throws SQLException {
-            return new TiDBOptRuleBlacklistOracle(globalState);
+            
+            return new TiDBPlacementRuleOracle(globalState);
         }
     },
     PARTITION_TABLE {

@@ -17,42 +17,46 @@ public class TiDBSeedPool extends AbstractSeedPool{
 
     private List<File> fileList;
 	public static int inscnt = 0;
-    private List<DecodedStmt> DDLSeedPool;
-    private List<DecodedStmt> DMLSeedPool;
-    private List<DecodedStmt> DQLSeedPool;
+    private List<String> DDLSeedPool;
+    private List<String> DMLSeedPool;
+    private List<String> DQLSeedPool;
     private static TiDBSeedPool seedPool;
     private TiDBSeedPool(GlobalState state)
     {
         super(state);
+        this.fileList = new ArrayList<File>();
+        this.DDLSeedPool = new ArrayList<String>();
+        this.DMLSeedPool = new ArrayList<String>();
+        this.DQLSeedPool = new ArrayList<String>();
         initPool("./src/sqlancer/tidb/TiDBSeeds");
     }
-    public List<DecodedStmt> getDDLSeedPool() {
+    public List<String> getDDLSeedPool() {
         return DDLSeedPool;
     }
-    public List<DecodedStmt> getDMLSeedPool() {
+    public List<String> getDMLSeedPool() {
         return DMLSeedPool;
     }
-    public List<DecodedStmt> getDQLSeedPool() {
+    public List<String> getDQLSeedPool() {
         return DQLSeedPool;
     }
-    public DecodedStmt getDDLSeed() {
-        DecodedStmt res = DDLSeedPool.get(0);
+    public String getDDLSeed() {
+        String res = DDLSeedPool.get(0);
         DDLSeedPool.remove(0);
-        res = refineSQL(res);
+        //res = refineSQL(res);
         return res;
     }
-    public DecodedStmt refineSQL(DecodedStmt stmt) {
+    public String refineSQL(String stmt) {
         
-        return stmt;
+        return TiDBSQLParser.refineSQL(stmt);
     }
 
-    public DecodedStmt getDMLSeed() {
-        DecodedStmt res = DMLSeedPool.get(0);
+    public String getDMLSeed() {
+        String res = DMLSeedPool.get(0);
         DMLSeedPool.remove(0);
         return res;
     }
-    public DecodedStmt getDQLSeed() {
-        DecodedStmt res = DQLSeedPool.get(0);
+    public String getDQLSeed() {
+        String res = DQLSeedPool.get(0);
         DQLSeedPool.remove(0);
         return res;
     }
@@ -84,22 +88,30 @@ public class TiDBSeedPool extends AbstractSeedPool{
 		return this.fileList;
 	}
     public void addSeed(String str) { 
-        DecodedStmt stmt = TiDBSQLParser.parse(str, super.getGlobalState().getDatabaseName());
+        /*DecodedStmt stmt = TiDBSQLParser.parse(str, super.getGlobalState().getDatabaseName());
+        
         if(stmt.getStmtType() == stmtType.DDL) {
             addToDDLSeedPool(stmt);
         }else if(stmt.getStmtType() == stmtType.DML) {
             addToDMLSeedPool(stmt);
         }else if(stmt.getStmtType() == stmtType.DQL) {
             addToDQLSeedPool(stmt);
+        }*/
+        if(str.toLowerCase().startsWith("create")) {
+            addToDDLSeedPool(str);
+        }else if(str.toLowerCase().startsWith("select")) {
+            addToDQLSeedPool(str);
+        }else{
+            addToDMLSeedPool(str);
         }
     }
-    public void addToDDLSeedPool(DecodedStmt stmt) {
+    public void addToDDLSeedPool(String stmt) {
         this.DDLSeedPool.add(stmt);
     }
-    public void addToDMLSeedPool(DecodedStmt stmt) {
+    public void addToDMLSeedPool(String stmt) {
         this.DMLSeedPool.add(stmt);
     }
-    public void addToDQLSeedPool(DecodedStmt stmt) {
+    public void addToDQLSeedPool(String stmt) {
         this.DQLSeedPool.add(stmt);
     }
 	public void loadSeed(File file) {

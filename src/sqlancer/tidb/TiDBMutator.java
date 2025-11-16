@@ -104,11 +104,9 @@ public class TiDBMutator{
         }
         sb.append(" INTO ");
         sb.append(table);
-        if (Randomly.getBoolean()) {
-            sb.append(" VALUES ");
-            List<TiDBColumn> columns = getColumnsFromDecodedStmt();
-            insertColumns(sb, columns, partitionKey, bounds);
-        } 
+        sb.append(" VALUES ");
+        List<TiDBColumn> columns = getColumnsFromDecodedStmt();
+        insertColumns(sb, columns, partitionKey, bounds);
         inserts.add(sb.toString());
     }
     private void insertColumns(StringBuilder sb, List<TiDBColumn> columns, String partitionKey, List<Integer> bounds) {
@@ -143,6 +141,9 @@ public class TiDBMutator{
     }
     private String getRandomIntColumnStringUsingParser() {
         int i = 0;
+        if(decodedStmt.getColsType() == null) {
+            return null;
+        }
         while(i < decodedStmt.getColsType().size()) {
             if(decodedStmt.getColsType().get(i).toLowerCase().contains("int")) {
                 break;
@@ -164,6 +165,7 @@ public class TiDBMutator{
         String table_name = decodedStmt.getTables().get(0);
 
         String col = getRandomIntColumnStringUsingParser();
+        
         if(col == null) {
             return;
         }
@@ -190,9 +192,8 @@ public class TiDBMutator{
             case(0):
                 generateRangePartition(inserts);
                 break;
-            case(1):
+            default:
                 generateHashPartition(inserts);
-                break;
             
         }
     }

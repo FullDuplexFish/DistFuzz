@@ -28,10 +28,14 @@ import (
 )
 
 func initTestKit(t *testing.T) *testkit.TestKit {
+	if !*realtikvtest.WithRealTiKV {
+		t.Skip("only run BR SQL integration test with tikv store")
+	}
+
 	store := realtikvtest.CreateMockStoreAndSetup(t)
 
 	cfg := config.GetGlobalConfig()
-	cfg.Store = config.StoreTypeTiKV
+	cfg.Store = "tikv"
 	cfg.Path = "127.0.0.1:2379"
 	config.StoreGlobalConfig(cfg)
 

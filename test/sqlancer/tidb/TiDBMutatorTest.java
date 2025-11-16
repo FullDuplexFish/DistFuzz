@@ -35,6 +35,7 @@ public class TiDBMutatorTest {
     TiDBPartitionTableOracle oracle;
     TiDBPartitionTableOracle spyOracle;
     TiDBGlobalState state;
+    TiDBMutator mutator;
     @BeforeEach
     private void init(){
         
@@ -54,6 +55,7 @@ public class TiDBMutatorTest {
         List<String> creates = new ArrayList<String>();
         creates.add("create table t0(c1 int)");
         creates.add("create table t1(c1 int) partition by hash(c1) partitions 7");
+        creates.add("create table t3(c0 float zerofill check (c0) default null );");
         creates.add("insert into t0 values(1)");
         List<String> queries = new ArrayList<String>();
         queries.add("select t1.c1, t0.c1 from t0 natural join t1 where t0.c1 > 0");
@@ -93,8 +95,8 @@ public class TiDBMutatorTest {
             visitor.when(() -> ComparatorHelper.getResultSetFirstColumnAsString(Mockito.any(),Mockito.any(),Mockito.any()))
               .thenReturn(tmp);
             //state.initHistory();
-            spyOracle.check();
-            System.out.println(state.getHistory());
+            mutator = new TiDBMutator(state, "create table t3(c0 int);");
+            System.out.println(mutator.mutateDDL());
 
  
         }catch(Exception e) {

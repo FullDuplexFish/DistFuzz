@@ -9,12 +9,11 @@ go_test(
     ],
     flaky = True,
     race = "on",
-    shard_count = 12,
     deps = [
         "//pkg/ddl/util",
         "//pkg/errno",
         "//pkg/meta",
-        "//pkg/meta/model",
+        "//pkg/parser/model",
         "//pkg/testkit",
         "//pkg/testkit/testfailpoint",
         "//pkg/testkit/testsetup",

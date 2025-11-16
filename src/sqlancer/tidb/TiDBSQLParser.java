@@ -19,10 +19,10 @@ import com.alibaba.fastjson.JSON;
 public class TiDBSQLParser implements SQLParser{
 
     DecodedStmt stmt;
-    static TiDBGlobalState state;
+    public static TiDBGlobalState state;
     
-    public void setGlobalState(TiDBGlobalState state) {
-        this.state = state;
+    public static void setGlobalState(TiDBGlobalState s) {
+        state = s;
     }
     
     public static DecodedStmt parse(String queryString, String dbname) {

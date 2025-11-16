@@ -75,7 +75,7 @@ public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
         state.executeStatement(new SQLQueryAdapter("ADMIN reload expr_pushdown_blacklist;"));
     }
     private void opt_rule_blacklist_oracle(List<String> queries) throws Exception {
-        List<String> firstResult = new ArrayList<String>();
+        /*List<String> firstResult = new ArrayList<String>();
         List<String> secondResult = new ArrayList<String>();
 
         clearOptBlacklist();
@@ -92,10 +92,23 @@ public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
         
         if(assertionMessage != null) {
             state.addHistoryToSeedPool();
+            state.getManager().incrementSelectQueryCount((long)queries.size());
             throw new AssertionError(assertionMessage);
         }
         
-        state.getManager().incrementSelectQueryCount((long)queries.size());
+        state.getManager().incrementSelectQueryCount((long)queries.size());*/
+
+        for(String query: queries) {
+            clearOptBlacklist();
+            List<String> firstResult = ComparatorHelper.getResultSetFirstColumnAsString(query, errors,
+                state);
+            insertOptBlacklist();
+            List<String> secondResult = ComparatorHelper.getResultSetFirstColumnAsString(query, errors,
+                state);
+            ComparatorHelper.assumeResultSetsAreEqual(firstResult, secondResult, query, List.of(query),
+                state);
+            state.getManager().incrementSelectQueryCount();
+        }
     }
 }
 

@@ -60,8 +60,8 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
 
     
     private void partition_table_oracle() throws Exception {
-        List<String> firstResult = new ArrayList<String>();
-        List<String> secondResult = new ArrayList<String>();
+        // List<String> firstResult = new ArrayList<String>();
+        // List<String> secondResult = new ArrayList<String>();
 
         try{
             generateOracleTable();
@@ -83,7 +83,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
 
 
   
-        for(String query: queries) {
+        /*for(String query: queries) {
             firstResult.addAll(ComparatorHelper.getResultSetFirstColumnAsString(query, errors,state));
         }
 
@@ -95,10 +95,22 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         String assertionMessage = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, queries, oracle_queries, state);//checkresults by batch
         if(assertionMessage != null) {
             state.addHistoryToSeedPool();
+            state.getManager().incrementSelectQueryCount((long)queries.size());
             throw new AssertionError(assertionMessage);
         }
         
-        state.getManager().incrementSelectQueryCount((long)queries.size());
+        state.getManager().incrementSelectQueryCount((long)queries.size());*/
+        for(int i = 0; i < queries.size(); i ++ ) {
+            String query1 = queries.get(i);
+            String query2 = oracle_queries.get(i);
+            List<String> firstResult = ComparatorHelper.getResultSetFirstColumnAsString(query1, errors,
+                state);
+            List<String> secondResult = ComparatorHelper.getResultSetFirstColumnAsString(query2, errors,
+                state);
+            ComparatorHelper.assumeResultSetsAreEqual(firstResult, secondResult, query1, List.of(query2),
+                state);
+            state.getManager().incrementSelectQueryCount();
+        }
     }
     private void removePartition(DecodedStmt stmt) {
         String str = stmt.getStmt();

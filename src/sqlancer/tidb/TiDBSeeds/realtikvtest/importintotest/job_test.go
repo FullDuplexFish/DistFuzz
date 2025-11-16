@@ -34,7 +34,6 @@ import (
 	"github.com/pingcap/tidb/pkg/disttask/importinto"
 	"github.com/pingcap/tidb/pkg/executor/importer"
 	"github.com/pingcap/tidb/pkg/parser/auth"
-	plannercore "github.com/pingcap/tidb/pkg/planner/core"
 	"github.com/pingcap/tidb/pkg/session"
 	"github.com/pingcap/tidb/pkg/testkit"
 	"github.com/pingcap/tidb/pkg/testkit/testfailpoint"
@@ -43,32 +42,30 @@ import (
 	"github.com/tikv/client-go/v2/util"
 )
 
-var fmap = plannercore.ImportIntoFieldMap
-
 func (s *mockGCSSuite) compareJobInfoWithoutTime(jobInfo *importer.JobInfo, row []any) {
-	s.Equal(strconv.Itoa(int(jobInfo.ID)), row[fmap["JobID"]])
+	s.Equal(strconv.Itoa(int(jobInfo.ID)), row[0])
 
 	urlExpected, err := url.Parse(jobInfo.Parameters.FileLocation)
 	s.NoError(err)
-	urlGot, err := url.Parse(fmt.Sprintf("%v", row[fmap["DataSource"]]))
+	urlGot, err := url.Parse(fmt.Sprintf("%v", row[1]))
 	s.NoError(err)
 	// order of query parameters might change
 	s.Equal(urlExpected.Query(), urlGot.Query())
 	urlExpected.RawQuery, urlGot.RawQuery = "", ""
 	s.Equal(urlExpected.String(), urlGot.String())
 
-	s.Equal(utils.EncloseDBAndTable(jobInfo.TableSchema, jobInfo.TableName), row[fmap["TargetTable"]])
-	s.Equal(strconv.Itoa(int(jobInfo.TableID)), row[fmap["TableID"]])
-	s.Equal(jobInfo.Step, row[fmap["Phase"]])
-	s.Equal(jobInfo.Status, row[fmap["Status"]])
-	s.Equal(units.BytesSize(float64(jobInfo.SourceFileSize)), row[fmap["SourceFileSize"]])
+	s.Equal(utils.EncloseDBAndTable(jobInfo.TableSchema, jobInfo.TableName), row[2])
+	s.Equal(strconv.Itoa(int(jobInfo.TableID)), row[3])
+	s.Equal(jobInfo.Step, row[4])
+	s.Equal(jobInfo.Status, row[5])
+	s.Equal(units.BytesSize(float64(jobInfo.SourceFileSize)), row[6])
 	if jobInfo.Summary == nil {
-		s.Equal("<nil>", row[fmap["ImportedRows"]].(string))
+		s.Equal("<nil>", row[7].(string))
 	} else {
-		s.Equal(strconv.Itoa(int(jobInfo.Summary.ImportedRows)), row[fmap["ImportedRows"]])
+		s.Equal(strconv.Itoa(int(jobInfo.Summary.ImportedRows)), row[7])
 	}
-	s.Regexp(jobInfo.ErrorMessage, row[fmap["ResultMessage"]])
-	s.Equal(jobInfo.CreatedBy, row[fmap["CreatedBy"]])
+	s.Regexp(jobInfo.ErrorMessage, row[8])
+	s.Equal(jobInfo.CreatedBy, row[12])
 }
 
 func (s *mockGCSSuite) TestShowJob() {
@@ -126,7 +123,7 @@ func (s *mockGCSSuite) TestShowJob() {
 		SourceFileSize: 3,
 		Status:         "finished",
 		Step:           "",
-		Summary: &importer.Summary{
+		Summary: &importer.JobSummary{
 			ImportedRows: 2,
 		},
 		ErrorMessage: "",
@@ -206,7 +203,7 @@ func (s *mockGCSSuite) TestShowJob() {
 					SourceFileSize: 6,
 					Status:         "running",
 					Step:           "importing",
-					Summary: &importer.Summary{
+					Summary: &importer.JobSummary{
 						ImportedRows: 2,
 					},
 					ErrorMessage: "",
@@ -291,12 +288,12 @@ func (s *mockGCSSuite) TestShowDetachedJob() {
 
 	s.Require().Eventually(func() bool {
 		rows := s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID1)).Rows()
-		return rows[0][fmap["Status"]] == "finished"
+		return rows[0][5] == "finished"
 	}, maxWaitTime, 500*time.Millisecond)
 	rows := s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID1)).Rows()
 	s.Len(rows, 1)
 	jobInfo.Status = "finished"
-	jobInfo.Summary = &importer.Summary{
+	jobInfo.Summary = &importer.JobSummary{
 		ImportedRows: 2,
 	}
 	s.compareJobInfoWithoutTime(jobInfo, rows[0])
@@ -325,7 +322,7 @@ func (s *mockGCSSuite) TestShowDetachedJob() {
 	s.compareJobInfoWithoutTime(jobInfo, result2[0])
 	s.Require().Eventually(func() bool {
 		rows = s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID2)).Rows()
-		return rows[0][fmap["Status"]] == "failed"
+		return rows[0][5] == "failed"
 	}, maxWaitTime, 500*time.Millisecond)
 	rows = s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID2)).Rows()
 	s.Len(rows, 1)
@@ -358,7 +355,7 @@ func (s *mockGCSSuite) TestShowDetachedJob() {
 	s.compareJobInfoWithoutTime(jobInfo, result3[0])
 	s.Require().Eventually(func() bool {
 		rows = s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID3)).Rows()
-		return rows[0][fmap["Status"]] == "failed"
+		return rows[0][5] == "failed"
 	}, maxWaitTime, 500*time.Millisecond)
 	rows = s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID3)).Rows()
 	s.Len(rows, 1)
@@ -461,12 +458,11 @@ func (s *mockGCSSuite) TestCancelJob() {
 	s.NoError(failpoint.Disable("github.com/pingcap/tidb/pkg/disttask/importinto/syncAfterJobStarted"))
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	tk2 := testkit.NewTestKit(s.T(), s.store)
 	testfailpoint.EnableCall(s.T(), "github.com/pingcap/tidb/pkg/disttask/importinto/syncBeforePostProcess",
 		func(jobID int64) {
 			go func() {
 				defer wg.Done()
-				tk2.MustExec(fmt.Sprintf("cancel import job %d", jobID))
+				s.tk.MustExec(fmt.Sprintf("cancel import job %d", jobID))
 			}()
 			s.Require().Eventually(func() bool {
 				task := s.getTaskByJobID(ctx, jobID)
@@ -529,10 +525,10 @@ func (s *mockGCSSuite) TestCancelJob() {
 	wg.Add(1)
 	testfailpoint.EnableCall(s.T(), "github.com/pingcap/tidb/pkg/disttask/importinto/syncBeforeJobStarted",
 		func(jobID int64) {
-			s.NoError(tk2.Session().Auth(&auth.UserIdentity{Username: "root", Hostname: "localhost"}, nil, nil, nil))
+			s.NoError(s.tk.Session().Auth(&auth.UserIdentity{Username: "root", Hostname: "localhost"}, nil, nil, nil))
 			go func() {
 				defer wg.Done()
-				tk2.MustExec(fmt.Sprintf("cancel import job %d", jobID))
+				s.tk.MustExec(fmt.Sprintf("cancel import job %d", jobID))
 			}()
 			s.Require().Eventually(func() bool {
 				task := s.getTaskByJobID(ctx, jobID)
@@ -650,7 +646,7 @@ func (s *mockGCSSuite) TestKillBeforeFinish() {
 	jobID := importer.TestLastImportJobID.Load()
 	rows := s.tk.MustQuery(fmt.Sprintf("show import job %d", jobID)).Rows()
 	s.Len(rows, 1)
-	s.Equal("cancelled", rows[0][fmap["Status"]])
+	s.Equal("cancelled", rows[0][5])
 	taskManager, err := storage.GetTaskManager()
 	s.NoError(err)
 	taskKey := importinto.TaskKey(jobID)
