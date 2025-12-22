@@ -172,18 +172,22 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         }
         public List<String> getSQLQueries() {
             List<String> res = new ArrayList<String>();
-            if(this.getRandomly().getBoolean()) {//get queries by generation
+            if(this.getRandomly().getBoolean() && this.getDbmsSpecificOptions().useSeedPool == true) {//get queries by seed pool
                 for(int i = 0; i < ((TiDBOptions)this.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
-                    res.add(getSQLQueriesByGeneration());
+                    res.add(TiDBSQLParser.refineSQL(this.getSeedPool().getDQLSeed().toLowerCase()));
                 }
-            }else{                                //get queries from seed pool
+                
+            }else{                                //get queries by generation
                 for(int i = 0; i < ((TiDBOptions)this.getDbmsSpecificOptions()).queriesPerBatch; i ++ ) {
-                    res.add(TiDBSQLParser.refineSQL(this.getSeedPool().getDQLSeed()));
+                    res.add(getSQLQueriesByGeneration().toLowerCase());
                 }
             }
             return res;
         }
         public List<String> mutateSQLQueries(List<String> sqls) {
+            if(!getDbmsSpecificOptions().enableMutate) {
+                return sqls;
+            }
             List<String> res = new ArrayList<String>();
             for(String sql: sqls) {
                 res.addAll(new TiDBMutator(this, sql).mutateSQL());
@@ -267,17 +271,21 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
 
     }
     public void initDatabase(TiDBGlobalState globalState) throws Exception {
+        System.out.println("start init database");
         globalState.setSeedPool(TiDBSeedPool.getInstance(globalState));
         //globalState.getLogger().writeCurrent("starting init seedpool");
         globalState.getSeedPool().initPool("./src/sqlancer/tidb/TiDBSeeds");
         //globalState.getLogger().writeCurrent("finish init seedpool");
+        System.out.println("finish load seed");
         
         if(globalState.hasPolicy == false){
             try{
-                globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p1 primary_region=\"region1\", regions=\"region1,region2, region3\";"));
-                globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p2 primary_region=\"region2\", regions=\"region1,region2, region3\";"));
-                globalState.executeStatement(new SQLQueryAdapter("create or replace placement policy p2 primary_region=\"region3\", regions=\"region1,region2, region3\";"));
-                globalState.executeStatement(new SQLQueryAdapter("CREATE or replace PLACEMENT POLICY two_replicas FOLLOWERS=2;"));
+                ExpectedErrors errors = new ExpectedErrors();
+                errors.add("already exists");
+                globalState.executeStatement(new SQLQueryAdapter("create placement policy p1 primary_region=\"region1\", regions=\"region1,region2, region3\";", errors));
+                globalState.executeStatement(new SQLQueryAdapter("create placement policy p2 primary_region=\"region2\", regions=\"region1,region2, region3\";", errors));
+                globalState.executeStatement(new SQLQueryAdapter("create placement policy p2 primary_region=\"region3\", regions=\"region1,region2, region3\";", errors));
+                globalState.executeStatement(new SQLQueryAdapter("CREATE PLACEMENT POLICY two_replicas FOLLOWERS=2;", errors));
 
                 globalState.executeStatement(new SQLQueryAdapter("ALTER RANGE global PLACEMENT POLICY two_replicas;"));
                 globalState.executeStatement(new SQLQueryAdapter("ALTER RANGE global PLACEMENT POLICY two_replicas;"));
@@ -328,6 +336,10 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         errors.add("not BASE TABLE");
         errors.add("Information schema is changed during the execution of the statement");
         errors.add("A CLUSTERED INDEX must include all columns in the table's partitioning function");
+        errors.add("Invalid default value");
+        errors.add("used in key specification without a key length");
+        errors.add("Generated column can refer only to generated columns defined prior to it");
+        errors.add("All parts of a PRIMARY KEY must be NOT NULL");
     }
     List<String> mutateSeed(TiDBGlobalState state, String sql) {
         TiDBMutator mutator = new TiDBMutator(state, sql);
@@ -348,12 +360,16 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             boolean allSuccess = false;
             do {
                 SQLQueryAdapter qt = null;
-                if(globalState.getRandomly().getBoolean() && !globalState.getSeedPool().getDDLSeedPool().isEmpty()) {//优先跑种子池
+                if(globalState.getRandomly().getBoolean() && !globalState.getSeedPool().getDDLSeedPool().isEmpty() && globalState.getDbmsSpecificOptions().useSeedPool == true) {//优先跑种子池
                     qt = new SQLQueryAdapter(globalState.getSeedPool().getDDLSeed(), globalState.getExpectedErrors(), true);
                 }else{
                     qt = new TiDBTableGenerator().getQuery(globalState);
                 }
-                List<String> mutatedSeed = mutateSeed(globalState, qt.getQueryString());
+                List<String> mutatedSeed = List.of(qt.getQueryString());
+                if(globalState.getDbmsSpecificOptions().enableMutate) {
+                    mutatedSeed = mutateSeed(globalState, qt.getQueryString());
+                }
+                
                 for(String sql: mutatedSeed) {
                     qt = new SQLQueryAdapter(sql, globalState.getExpectedErrors(), true);
                     boolean success = globalState.executeStatement(qt);
@@ -366,7 +382,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
                 
             } while (!allSuccess);
         }
-        if(globalState.getRandomly().getBoolean() && globalState.getSeedPool().getDMLSeedPool().size() > 0) {
+        if(globalState.getRandomly().getBoolean() && globalState.getSeedPool().getDMLSeedPool().size() > 0 && globalState.getDbmsSpecificOptions().useSeedPool == true) {
             
 
             try{
@@ -430,6 +446,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
                 globalState.executeStatement(new SQLQueryAdapter("set @@tidb_enforce_mpp=1;"));
             }
         }
+        //System.out.println("finish generate database");
     }
     
 

@@ -57,6 +57,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
 
     @Override
     public void check() throws Exception {
+        System.out.println("enter");
         List<String> queries = state.mutateSQLQueries(state.getSQLQueries());
         placement_rule_oracle(queries);
     }
@@ -120,6 +121,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
      }
     
     private void placement_rule_oracle(List<String> queries) throws Exception {
+        System.out.println("start placement rule oracle and query size is " + queries.size());
         List<String> firstResult = new ArrayList<String>();
         List<String> secondResult = new ArrayList<String>();
 

@@ -50,6 +50,14 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
 
     public TiDBPartitionTableOracle(TiDBGlobalState globalState) {
         state = globalState;
+        errors.add("already exists");
+        errors.add("is of a not allowed type for this type of partitioning");
+        errors.add("BLOB/TEXT column 'c0' used in key specification without a key length");
+        errors.add("Generated column can refer only to generated columns defined prior to it");
+        errors.add("Global Index is needed for index");
+        errors.add("Duplicate key name");
+        errors.add("Unsupported modify column");
+
         TiDBErrors.addExpressionErrors(errors);
     }
 
@@ -107,9 +115,13 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
                 state);
             List<String> secondResult = ComparatorHelper.getResultSetFirstColumnAsString(query2, errors,
                 state);
-            ComparatorHelper.assumeResultSetsAreEqual(firstResult, secondResult, query1, List.of(query2),
+            String msg = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, List.of(query1), List.of(query2),
                 state);
             state.getManager().incrementSelectQueryCount();
+            if(msg != null) {
+                state.addHistoryToSeedPool();
+                throw new AssertionError(msg);
+            }
         }
     }
     private void removePartition(DecodedStmt stmt) {
@@ -117,6 +129,9 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         stmt.setStmt(str.substring(0, str.indexOf("partition")));
     }
     private void replaceTableNameWithOracleNameInStmt(DecodedStmt stmt) {
+        if(stmt.getTables() == null) {
+            return;
+        }
         for(String table: stmt.getTables()) {
             String new_name = table + "_oracle";
             stmt.setStmt(state.replaceStmtTableName(stmt.getStmt(), table, new_name));
@@ -132,7 +147,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
     private void appendPartition(DecodedStmt stmt) {
         stmt.setStmt(trimString(stmt.getStmt()));
 
-        switch((int)state.getRandomly().getNotCachedInteger(0, 6)) {
+        switch((int)state.getRandomly().getNotCachedInteger(0, 1)) {
             case(0):
                 generateRangePartition(stmt);
                 break;
@@ -254,9 +269,11 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         String str = stmt.getStmt();
         String table_name = stmt.getTables().get(0);
         String col = state.getRandomIntColumnString(table_name);
+        //System.out.println(stmt + " " + table_name);
         String new_name = table_name + "_oracle";
         str = state.replaceStmtTableName(str, table_name, new_name);
         if(col == null) {//no int type column
+            stmt.setStmt(str);
             return;
         }
         int range = (int)Randomly.getNotCachedInteger(10, 10000);
@@ -308,6 +325,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         str = state.replaceStmtTableName(str, table_name, new_name);
         String col = state.getRandomIntColumnString(table_name);
         if(col == null) {
+            stmt.setStmt(str);
             return;
         }
         int pcnt = (int)Randomly.getNotCachedInteger(10, 100);
@@ -326,10 +344,19 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             decodedStmt.setStmt(decodedStmt.getStmt().toLowerCase());
             if(decodedStmt.getParseSuccess()) {
                 if(decodedStmt.getStmtType() == DecodedStmt.stmtType.DDL) {
-                    if(decodedStmt.getStmt().toLowerCase().contains("partition")) {
-                        removePartition(decodedStmt);
+                    if(decodedStmt.getStmt().toLowerCase().contains("like")) {
+                        replaceTableNameWithOracleNameInStmt(decodedStmt);
+                    }else if(decodedStmt.getStmt().toLowerCase().contains("create index")) {//create index takes too much time
+                        continue;
                     }
-                    appendPartition(decodedStmt);
+                    else{
+                        if(decodedStmt.getStmt().toLowerCase().contains("partition")) {
+                        removePartition(decodedStmt);
+                        }
+                        appendPartition(decodedStmt);
+                    }
+                    
+                    
                 }else{
                     replaceTableNameWithOracleNameInStmt(decodedStmt);
                 }

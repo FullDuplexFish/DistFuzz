@@ -105,9 +105,13 @@ public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
             insertOptBlacklist();
             List<String> secondResult = ComparatorHelper.getResultSetFirstColumnAsString(query, errors,
                 state);
-            ComparatorHelper.assumeResultSetsAreEqual(firstResult, secondResult, query, List.of(query),
-                state);
+            String msg = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, List.of(query), List.of(query),
+            state);
             state.getManager().incrementSelectQueryCount();
+            if(msg != null) {
+                state.addHistoryToSeedPool();
+                throw new AssertionError(msg);
+            }
         }
     }
 }

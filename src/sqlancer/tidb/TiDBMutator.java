@@ -203,10 +203,13 @@ public class TiDBMutator{
         decodedStmt.setStmt(decodedStmt.getStmt().toLowerCase());
         if(decodedStmt.getParseSuccess()) {
             if(decodedStmt.getStmtType() == DecodedStmt.stmtType.DDL) {
+
                 if(decodedStmt.getStmt().toLowerCase().contains("partition")) {
                     removePartition();
                 }
-                appendPartition(inserts);
+                if(!decodedStmt.getStmt().toLowerCase().contains("like")){
+                    appendPartition(inserts);
+                }
             }
             //System.out.println("oracle table stmt: " + decodedStmt.getStmt());
         }

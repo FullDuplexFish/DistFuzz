@@ -21,6 +21,7 @@ public class TiDBSeedPool extends AbstractSeedPool{
     private List<String> DMLSeedPool;
     private List<String> DQLSeedPool;
     private static TiDBSeedPool seedPool;
+    private boolean inited = false;
     private TiDBSeedPool(GlobalState state)
     {
         super(state);
@@ -71,6 +72,7 @@ public class TiDBSeedPool extends AbstractSeedPool{
 
 
     public void initPool(String path) {
+        if(inited) return;
 		getFiles(path);
 
 		try{
@@ -78,6 +80,7 @@ public class TiDBSeedPool extends AbstractSeedPool{
 			for(File file: fileList){
 				loadSeed(file);
 			}
+            inited = true;
 
 		}catch(Exception e){
 			e.printStackTrace();

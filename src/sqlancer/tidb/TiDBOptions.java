@@ -26,6 +26,12 @@ public class TiDBOptions implements DBMSSpecificOptions<TiDBOracleFactory> {
     @Parameter(names = "--enable-non-prepared-plan-cache")
     public boolean nonPreparePlanCache;
 
+    @Parameter(names = "--use-seed-pool")
+    public boolean useSeedPool = false;
+
+    @Parameter(names = "--enable-mutate")
+    public boolean enableMutate = false;
+
     @Parameter(names = { "--tiflash" }, description = "Enable TiFlash")
     public boolean tiflash;
 

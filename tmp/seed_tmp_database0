@@ -1,0 +1,10 @@
+$%#Seed$%#
+delete from mysql.opt_rule_blacklist where name="aggregation_push_down";
+admin reload opt_rule_blacklist;
+set @@sql_mode = default;
+$%#Name$%#
+t18
+t19
+t20
+t21
+t22

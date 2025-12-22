@@ -52,7 +52,9 @@ public class TiDBPartitionTableOracleTest {
         TiDBOptions dbmsop = mock(TiDBOptions.class);
         List<String> creates = new ArrayList<String>();
         creates.add("create table t0(c1 int)");
+        creates.add("create table t0 like t1");
         creates.add("create table t1(c1 int) partition by hash(c1) partitions 7");
+        creates.add("create table t0(c0 bool unsigned zerofill )");
         creates.add("insert into t0 values(1)");
         List<String> queries = new ArrayList<String>();
         queries.add("select t1.c1, t0.c1 from t0 natural join t1 where t0.c1 > 0");
@@ -74,7 +76,7 @@ public class TiDBPartitionTableOracleTest {
             Mockito.doNothing().when(manager).incrementSelectQueryCount();
             Mockito.doReturn(manager).when(state).getManager();
             
-            Mockito.doReturn("c1").when(state).getRandomIntColumnString(Mockito.any());
+            Mockito.doReturn(null).when(state).getRandomIntColumnString(Mockito.any());
             Mockito.doReturn("c1;NUM").when(state).getRandomColumnStrings(Mockito.any());
 
 
@@ -93,7 +95,7 @@ public class TiDBPartitionTableOracleTest {
               .thenReturn(tmp);
             //state.initHistory();
             spyOracle.check();
-            System.out.println(state.getHistory());
+            //System.out.println(state.getHistory());
 
  
         }catch(Exception e) {

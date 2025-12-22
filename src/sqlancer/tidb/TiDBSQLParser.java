@@ -105,6 +105,6 @@ public class TiDBSQLParser implements SQLParser{
             e.printStackTrace();
         }
 
-        return line;
+        return line.toLowerCase();
     }
 }

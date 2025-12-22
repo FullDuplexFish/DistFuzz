@@ -1,6 +1,7 @@
 package sqlancer.common;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /*
  * This class stores information of stmts decoded to json by parser.
@@ -13,6 +14,8 @@ public class DecodedStmt {
     List<String> cols;
     List<String> colsType;
     boolean parseSuccess;
+
+    boolean tables_are_distinct = false;
 
     public String getStmt() {
         return stmt;
@@ -27,6 +30,12 @@ public class DecodedStmt {
         this.type = type;
     }
     public List<String> getTables() {
+        if(tables_are_distinct) {
+            tables = tables.parallelStream()
+            .distinct()
+            .collect(Collectors.toList());
+        }
+        
         return tables;
     }
 
