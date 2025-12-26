@@ -340,6 +340,8 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         errors.add("used in key specification without a key length");
         errors.add("Generated column can refer only to generated columns defined prior to it");
         errors.add("All parts of a PRIMARY KEY must be NOT NULL");
+        errors.add("Multiple primary key defined");
+        errors.add("partition function is not allowed");
     }
     List<String> mutateSeed(TiDBGlobalState state, String sql) {
         TiDBMutator mutator = new TiDBMutator(state, sql);

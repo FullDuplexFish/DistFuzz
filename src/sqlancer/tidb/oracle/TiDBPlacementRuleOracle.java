@@ -53,6 +53,7 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
     public TiDBPlacementRuleOracle(TiDBGlobalState globalState) {
         state = globalState;
         TiDBErrors.addExpressionErrors(errors);
+        errors.add("is not BASE TABLE");
     }
 
     @Override

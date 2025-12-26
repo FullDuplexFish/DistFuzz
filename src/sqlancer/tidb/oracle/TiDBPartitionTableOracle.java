@@ -57,6 +57,8 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         errors.add("Global Index is needed for index");
         errors.add("Duplicate key name");
         errors.add("Unsupported modify column");
+        errors.add("check that column/key exists");
+        errors.add("Multiple primary key defined");
 
         TiDBErrors.addExpressionErrors(errors);
     }
@@ -77,6 +79,11 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             e.printStackTrace();
         }
         List<String> queries = state.mutateSQLQueries(state.getSQLQueries());
+        System.out.println("queries are:");
+        for(String str: queries) {
+            System.out.println(str);
+        }
+        System.out.println("===");
         List<String> oracle_queries = new ArrayList<String>();
         for(String query: queries) {
             DecodedStmt stmt = TiDBSQLParser.parse(query, state.getDatabaseName());
@@ -84,10 +91,17 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
             if(stmt.getTables().size() > 0) {
                 for(String table: stmt.getTables()) {
                     new_query = state.replaceStmtTableName(new_query, table, table + "_oracle");
+                    //System.out.println(new_query);
                 }
             }
             oracle_queries.add(new_query);
         }
+
+        System.out.println("oracle queries are:");
+        for(String str: oracle_queries) {
+            System.out.println(str);
+        }
+        System.out.println("===");
 
 
   
@@ -339,6 +353,8 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
     }
 
     private void generateOracleTable() {
+
+        if(state.historyIsUsed == true) return;
         for(String stmt: state.getHistory()) {
             DecodedStmt decodedStmt = TiDBSQLParser.parse(stmt, state.getDatabaseName());
             decodedStmt.setStmt(decodedStmt.getStmt().toLowerCase());
@@ -362,12 +378,13 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
                 }
                 //System.out.println("oracle table stmt: " + decodedStmt.getStmt());
                 try{
-                    state.executeStatement(new SQLQueryAdapter(decodedStmt.getStmt(), errors));
+                    boolean success = state.executeStatement(new SQLQueryAdapter(decodedStmt.getStmt(), errors));
                 }catch(Exception e) {
                     e.printStackTrace();
                 }
             }
         }
+        state.historyIsUsed = true;
     }
 }
 

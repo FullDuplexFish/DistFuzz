@@ -22,6 +22,7 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
     private Main.QueryManager<C> manager;
     private String databaseName;
     private List<String> history;
+    public boolean historyIsUsed = false;
 
     public List<String> getHistory() {
         return history;

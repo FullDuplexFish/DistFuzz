@@ -339,6 +339,7 @@ public class TiDBSchema extends AbstractSchema<TiDBGlobalState, TiDBTable> {
             ResultSet tableRs = s.executeQuery("SHOW TABLES");
             while (tableRs.next()) {
                 String tableName = tableRs.getString(1);
+                if(tableName.contains("oracle")) continue;
                 tableNames.add(tableName);
             }
         }
