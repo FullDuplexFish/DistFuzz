@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import sqlancer.common.query.Query;
+import sqlancer.common.query.SQLQueryAdapter;
 
 public class StatementExecutor<G extends GlobalState<?, ?, ?>, A extends AbstractAction<G>> {
 
@@ -67,7 +68,9 @@ public class StatementExecutor<G extends GlobalState<?, ?, ?>, A extends Abstrac
                 int nrTries = 0;
                 do {
                     query = nextAction.getQuery(globalState);
-                    success = globalState.executeStatement(query);
+                    SQLQueryAdapter lowerCaseQuery = new SQLQueryAdapter(query.getQueryString().toLowerCase(),globalState.getExpectedErrors());
+                    
+                    success = globalState.executeStatement((Query)lowerCaseQuery);
 
                     if(success) {
                         globalState.insertIntoHistory(query.getQueryString());

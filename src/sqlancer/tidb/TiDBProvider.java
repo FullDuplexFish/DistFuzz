@@ -300,7 +300,14 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             globalState.executeStatement(new SQLQueryAdapter("SET GLOBAL tidb_multi_statement_mode='ON';"));
             globalState.executeStatement(new SQLQueryAdapter("SET @@sql_mode='';"));
             globalState.executeStatement(new SQLQueryAdapter("SET @@global.tidb_enable_clustered_index='off';"));
-            globalState.executeStatement(new SQLQueryAdapter("delete from mysql.opt_rule_blacklist;"));
+            if(globalState.getRandomly().getBoolean()) {
+                globalState.executeStatement(new SQLQueryAdapter("delete from mysql.opt_rule_blacklist;"));
+            }else{
+                globalState.executeStatement(new SQLQueryAdapter("INSERT INTO mysql.opt_rule_blacklist VALUES(\"aggregation_push_down\"), (\"predicate_push_down\")," +
+                                                        "(\"column_prune\"), (\"decorrelate\"), (\"aggregation_eliminate\"),(\"projection_eliminate\")," + 
+                                                        "(\"max_min_eliminate\"),(\"outer_join_eliminate\"),(\"partition_processor\"),(\"topn_push_down\"),(\"join_reorder\");"));
+            }
+            
             globalState.executeStatement(new SQLQueryAdapter("admin reload opt_rule_blacklist;"));
         }catch(Exception e) {
             e.printStackTrace();

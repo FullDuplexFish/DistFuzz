@@ -14,10 +14,7 @@ import sqlancer.common.schema.AbstractSchema;
  */
 public abstract class SQLGlobalState<O extends DBMSSpecificOptions<?>, S extends AbstractSchema<?, ?>>
         extends GlobalState<O, S, SQLConnection> {
-    private ExpectedErrors errors = new ExpectedErrors();
-    public ExpectedErrors getExpectedErrors() {
-        return errors;
-    }
+    
     @Override
     protected void executeEpilogue(Query<?> q, boolean success, ExecutionTimer timer) throws Exception {
         boolean logExecutionTime = getOptions().logExecutionTime();

@@ -54,7 +54,7 @@ public class TiDBSeedPool extends AbstractSeedPool{
     public String getDMLSeed() {
         String res = DMLSeedPool.get(0);
         DMLSeedPool.remove(0);
-        return res;
+        return res.toLowerCase();
     }
     public String getDQLSeed() {
         String res = DQLSeedPool.get(0);

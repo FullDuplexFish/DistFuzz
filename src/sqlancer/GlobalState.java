@@ -3,6 +3,7 @@ package sqlancer;
 import java.util.ArrayList;
 import java.util.List;
 
+import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.Query;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.common.schema.AbstractSchema;
@@ -23,6 +24,10 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
     private String databaseName;
     private List<String> history;
     public boolean historyIsUsed = false;
+    private ExpectedErrors errors = new ExpectedErrors();
+    public ExpectedErrors getExpectedErrors() {
+        return errors;
+    }
 
     public List<String> getHistory() {
         return history;
