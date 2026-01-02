@@ -159,6 +159,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         return str;
     }
     private void appendPartition(DecodedStmt stmt) {
+        System.out.println("appending partitions");
         stmt.setStmt(trimString(stmt.getStmt()));
 
         switch((int)state.getRandomly().getNotCachedInteger(0, 1)) {
@@ -286,6 +287,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         //System.out.println(stmt + " " + table_name);
         String new_name = table_name + "_oracle";
         str = state.replaceStmtTableName(str, table_name, new_name);
+        
         if(col == null) {//no int type column
             stmt.setStmt(str);
             return;
@@ -302,6 +304,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         str += "partition p" + String.valueOf(cnt) + " values less than maxvalue);";
         
         stmt.setStmt(str);
+        System.out.println("trigger range oracle " + str);
         return;
         
     }
@@ -374,7 +377,10 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
                     
                     
                 }else{
-                    replaceTableNameWithOracleNameInStmt(decodedStmt);
+                    if(!decodedStmt.getStmt().contains("_oracle")) {
+                        replaceTableNameWithOracleNameInStmt(decodedStmt);
+                    }
+                    
                 }
                 //System.out.println("oracle table stmt: " + decodedStmt.getStmt());
                 try{

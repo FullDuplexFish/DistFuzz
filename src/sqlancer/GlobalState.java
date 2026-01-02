@@ -2,6 +2,7 @@ package sqlancer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.*;
 
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.Query;
@@ -125,9 +126,37 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
         }
         return timer;
     }
-    public String replaceStmtTableName(String origin_str, String old_name, String new_name) {
-        String newString = origin_str.replaceAll(old_name + "(?![0-9]+)", new_name);
-        return newString;
+    public String replaceStmtTableName(String origin_str, String oldName, String newName) {
+        //String newString = origin_str.replaceAll(old_name + "(?![0-9]+)", new_name);
+        // 安全转义表名
+        String escapedOldName = Pattern.quote(oldName);
+        
+        // 构建正则表达式
+        // 注意字符类中的转义：
+        // - 需要转义为 \\-
+        // ] 需要转义为 \\]
+        // ^ 如果不是开头，不需要特殊转义
+        
+        String regex = "(?xi)                       # 忽略大小写和注释模式\n" +
+                      "(?<=                        # 正向回顾\n" +
+                      "    ^                       # 字符串开始\n" +
+                      "    |                       # 或\n" +
+                      "    [\\s,.()=                # 空白、逗号、点、左括号、等号\n" +
+                      "     \\-+*/%&|^<>!~]        # 各种运算符\n" +
+                      ")                           # 回顾结束\n" +
+                      "\\b" + escapedOldName + "\\b # 精确匹配表名\n" +
+                      "(?=                         # 正向预测\n" +
+                      "    [\\s.,();=               # 空白、点、逗号、右括号、分号、等号\n" +
+                      "     \\-+*/%&|^<>!~]        # 各种运算符\n" +
+                      "    |                       # 或\n" +
+                      "    $                       # 字符串结束\n" +
+                      ")";
+        
+        // 使用编译模式，性能更好
+        Pattern pattern = Pattern.compile(regex, Pattern.COMMENTS);
+        Matcher matcher = pattern.matcher(origin_str);
+        
+        return matcher.replaceAll(newName);
     }
 
     protected abstract void executeEpilogue(Query<?> q, boolean success, ExecutionTimer timer) throws Exception;

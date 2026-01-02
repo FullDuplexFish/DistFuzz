@@ -349,6 +349,16 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         errors.add("All parts of a PRIMARY KEY must be NOT NULL");
         errors.add("Multiple primary key defined");
         errors.add("partition function is not allowed");
+        errors.add("Unsupported modify column: this column has primary key flag");
+        errors.add("Unsupported modify column: table is partition table");
+        errors.add("Constant, random or timezone-dependent expressions in (sub)partitioning function are not allowed");
+        errors.add("Failed to open the referenced table");
+        errors.add("Column count doesn't match value count at row");
+        errors.add("Incorrect prefix key");
+        errors.add("Cannot create temporary table with partitions");
+        errors.add("Column 'a' has a partitioning function dependency and cannot be dropped or renamed");
+        errors.add("Unsupported modify column");
+        errors.add("Not unique table/alias");
     }
     List<String> mutateSeed(TiDBGlobalState state, String sql) {
         TiDBMutator mutator = new TiDBMutator(state, sql);
@@ -374,7 +384,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
                 }else{
                     qt = new TiDBTableGenerator().getQuery(globalState);
                 }
-                List<String> mutatedSeed = List.of(qt.getQueryString());
+                List<String> mutatedSeed = List.of(qt.getQueryString().toLowerCase());
                 if(globalState.getDbmsSpecificOptions().enableMutate) {
                     mutatedSeed = mutateSeed(globalState, qt.getQueryString());
                 }
@@ -396,7 +406,7 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
 
             try{
                 for(int i = 0; i < Math.min(globalState.getRandomly().getNotCachedInteger(3, 10), globalState.getSeedPool().getDMLSeedPool().size()); i ++ ) {
-                    SQLQueryAdapter qt = new SQLQueryAdapter(globalState.getSeedPool().refineSQL(globalState.getSeedPool().getDMLSeed()), globalState.getExpectedErrors(), true);
+                    SQLQueryAdapter qt = new SQLQueryAdapter(globalState.getSeedPool().refineSQL(globalState.getSeedPool().getDMLSeed()).toLowerCase(), globalState.getExpectedErrors(), true);
                     boolean success = globalState.executeStatement(qt);
                     if(success) {
                         globalState.insertIntoHistory(qt.getQueryString());
