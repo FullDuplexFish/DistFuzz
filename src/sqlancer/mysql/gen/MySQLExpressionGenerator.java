@@ -15,6 +15,7 @@ import sqlancer.common.schema.AbstractTables;
 import sqlancer.mysql.MySQLBugs;
 import sqlancer.mysql.MySQLGlobalState;
 import sqlancer.mysql.MySQLSchema.MySQLColumn;
+import sqlancer.mysql.MySQLSchema.MySQLDataType;
 import sqlancer.mysql.MySQLSchema.MySQLRowValue;
 import sqlancer.mysql.MySQLSchema.MySQLTable;
 import sqlancer.mysql.ast.MySQLAggregate;
@@ -174,6 +175,26 @@ public class MySQLExpressionGenerator extends UntypedExpressionGenerator<MySQLEx
             String string = state.getRandomly().getString().replace("\\", "").replace("\n", "");
             return MySQLConstant.createStringConstant(string);
         case DOUBLE:
+            double val = state.getRandomly().getDouble();
+            return new MySQLDoubleConstant(val);
+        default:
+            throw new AssertionError();
+        }
+    }
+
+    public MySQLExpression generateConstant(MySQLDataType dataType) {
+        ConstantType[] values;
+
+        switch (dataType) {
+        case INT:
+            return MySQLConstant.createIntConstant((int) state.getRandomly().getInteger());
+        case VARCHAR:
+            /* Replace characters that still trigger open bugs in MySQL */
+            String string = state.getRandomly().getString().replace("\\", "").replace("\n", "");
+            return MySQLConstant.createStringConstant(string);
+        case DOUBLE:
+        case FLOAT:
+        case DECIMAL:
             double val = state.getRandomly().getDouble();
             return new MySQLDoubleConstant(val);
         default:

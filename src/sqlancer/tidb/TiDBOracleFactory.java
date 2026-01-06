@@ -17,6 +17,7 @@ import sqlancer.tidb.oracle.TiDBOptRuleBlacklistOracle;
 import sqlancer.tidb.oracle.TiDBPlacementRuleOracle;
 import sqlancer.tidb.oracle.TiDBPartitionTableOracle;
 import sqlancer.tidb.oracle.TiDBTLPHavingOracle;
+import sqlancer.tidb.oracle.TiDBNoOracle;
 
 public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalState> {
     HAVING {
@@ -107,6 +108,14 @@ public enum TiDBOracleFactory implements OracleFactory<TiDBProvider.TiDBGlobalSt
             oracles.add(PLACEMENT_RULE.create(globalState));
             oracles.add(PARTITION_TABLE.create(globalState));
             return new CompositeTestOracle<TiDBProvider.TiDBGlobalState>(oracles, globalState);
+        }
+    }, 
+    NO_ORACLE {
+        @Override
+        public TestOracle<TiDBProvider.TiDBGlobalState> create(TiDBProvider.TiDBGlobalState globalState)
+                throws Exception {
+            List<TestOracle<TiDBProvider.TiDBGlobalState>> oracles = new ArrayList<>();
+            return new TiDBNoOracle(globalState);
         }
     }
 

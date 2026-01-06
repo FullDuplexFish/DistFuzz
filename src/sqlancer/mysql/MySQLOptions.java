@@ -17,6 +17,9 @@ public class MySQLOptions implements DBMSSpecificOptions<MySQLOracleFactory> {
     @Parameter(names = "--oracle")
     public List<MySQLOracleFactory> oracles = Arrays.asList(MySQLOracleFactory.TLP_WHERE);
 
+    @Parameter(names = "--enable-mutate")
+    public boolean enableMutate = false;
+
     @Override
     public List<MySQLOracleFactory> getTestOracleFactory() {
         return oracles;

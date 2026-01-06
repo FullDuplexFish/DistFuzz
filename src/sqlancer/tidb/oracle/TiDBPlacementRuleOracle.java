@@ -59,7 +59,12 @@ public class TiDBPlacementRuleOracle implements TestOracle<TiDBGlobalState> {
     @Override
     public void check() throws Exception {
         System.out.println("enter");
-        List<String> queries = state.mutateSQLQueries(state.getSQLQueries());
+        List<String> queries = null;
+        if(state.getRandomly().getBoolean()) {
+            queries = state.mutateSQLQueries(state.getSQLQueries());
+        }else{
+            queries = state.getSQLQueries();
+        }
         placement_rule_oracle(queries);
     }
 

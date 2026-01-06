@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,6 +40,8 @@ import sqlancer.mysql.gen.tblmaintenance.MySQLCheckTable;
 import sqlancer.mysql.gen.tblmaintenance.MySQLChecksum;
 import sqlancer.mysql.gen.tblmaintenance.MySQLOptimize;
 import sqlancer.mysql.gen.tblmaintenance.MySQLRepair;
+import sqlancer.tidb.TiDBMutator;
+import sqlancer.tidb.TiDBProvider.TiDBGlobalState;
 
 @AutoService(DatabaseProvider.class)
 public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOptions> {
@@ -136,13 +139,102 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         }
         return nrPerformed;
     }
+    private void initDatabase(MySQLGlobalState globalState) {
+        
+        List<String> list = new ArrayList<String>();
+        if(globalState.getRandomly().getBoolean()) {
+            String ban_op = "SET session optimizer_switch = 'index_merge=off,index_merge_union=off,index_merge_sort_union=off,index_merge_intersection=off,engine_condition_pushdown=off,index_condition_pushdown=off,mrr=off,mrr_cost_based=off,block_nested_loop=off,batched_key_access=off,materialization=off,semijoin=off,loosescan=off,firstmatch=off,duplicateweedout=off,subquery_materialization_cost_based=off,use_index_extensions=off,condition_fanout_filter=off,derived_merge=off,use_invisible_indexes=off,skip_scan=off,hash_join=off,subquery_to_derived=off,prefer_ordering_index=off,derived_condition_pushdown=off,hash_set_operations=off';";
+            
+            list.add(ban_op);
+            ban_op = "set session optimizer_prune_level=0";
+            list.add(ban_op);
+            ban_op = "set session optimizer_search_depth=0";
+            list.add(ban_op);
+        }else{
+            String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,use_invisible_indexes=on,skip_scan=on,hash_join=on,subquery_to_derived=on,prefer_ordering_index=on,derived_condition_pushdown=on,hash_set_operations=on';";
+            
+            list.add(ban_op);
+            ban_op = "set session optimizer_prune_level=1";
+            list.add(ban_op);
+            ban_op = "set session optimizer_search_depth=10";
+            list.add(ban_op);
+        }
+        for(String str : list) {
+            try{
+                globalState.executeStatement(new SQLQueryAdapter(str, globalState.getExpectedErrors(), false));
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+    }
+    private void updateExpectedErrors(MySQLGlobalState globalState) {
+        globalState.getExpectedErrors().add("cannot be null");
+        globalState.getExpectedErrors().add("not supported");
+        globalState.getExpectedErrors().add("Incorrect DOUBLE value");
+        globalState.getExpectedErrors().add("Incorrect FLOAT value");
+        globalState.getExpectedErrors().add("Duplicate key name");
+        globalState.getExpectedErrors().add("contains a disallowed function");
+        globalState.getExpectedErrors().add("used in key specification without a key length");
+        globalState.getExpectedErrors().add("does not support the create option");
+        globalState.getExpectedErrors().add("Incorrect decimal value");
+        globalState.getExpectedErrors().add("Unknown system variable");
+        globalState.getExpectedErrors().add("is not allowed in partition function");
+        globalState.getExpectedErrors().add("is of a not allowed type for this type of partitioning");
+        globalState.getExpectedErrors().add("Truncated incorrect DOUBLE value");
+        globalState.getExpectedErrors().add("Out of range value for column");
+        globalState.getExpectedErrors().add("doesn't exist");
+        globalState.getExpectedErrors().add("The storage engine for the table doesn't support native partitioning");
+        globalState.getExpectedErrors().add("A UNIQUE INDEX must include all columns in the table's partitioning function");
+        globalState.getExpectedErrors().add("in where clause is ambiguous");
+        globalState.getExpectedErrors().add("Incorrect integer value");
+        globalState.getExpectedErrors().add("Incorrect usage of");
+        globalState.getExpectedErrors().add("A PRIMARY KEY must include all columns in the table's partitioning function");
+        globalState.getExpectedErrors().add(" doesn't have this option");
+        globalState.getExpectedErrors().add("has a partitioning function dependency and cannot be dropped or renamed");
+        globalState.getExpectedErrors().add("The used storage engine cannot index the expression");
+        globalState.getExpectedErrors().add("Data truncated for column");
+        globalState.getExpectedErrors().add("Truncated incorrect INTEGER value");
+        globalState.getExpectedErrors().add("You have an error in your SQL syntax");
+        globalState.getExpectedErrors().add("already exists");
+        globalState.getExpectedErrors().add("Duplicate entry");
+        globalState.getExpectedErrors().add("is ambiguous");
 
+    }
+    List<String> mutateSeed(MySQLGlobalState state, String sql) {
+        MySQLMutator mutator = new MySQLMutator(state, sql);
+        List<String> res = mutator.mutateSQL();
+        return res;
+    }
     @Override
     public void generateDatabase(MySQLGlobalState globalState) throws Exception {
-        while (globalState.getSchema().getDatabaseTables().size() < Randomly.getNotCachedInteger(1, 2)) {
+        initDatabase(globalState);
+        updateExpectedErrors(globalState);
+        if(globalState.getHistory() == null) {
+            globalState.initHistory();
+        }
+        globalState.clearHistory();
+        while (globalState.getSchema().getDatabaseTables().size() < Randomly.getNotCachedInteger(1, 4)) {
             String tableName = DBMSCommon.createTableName(globalState.getSchema().getDatabaseTables().size());
             SQLQueryAdapter createTable = MySQLTableGenerator.generate(globalState, tableName);
-            globalState.executeStatement(createTable);
+            // boolean success = globalState.executeStatement(createTable);
+            
+            // if(success) {
+            //     globalState.insertIntoHistory(createTable.getQueryString());
+            // }
+            List<String> mutatedSeed = List.of(createTable.getQueryString().toLowerCase());
+            if(globalState.getDbmsSpecificOptions().enableMutate) {
+                mutatedSeed = mutateSeed(globalState, createTable.getQueryString());
+            }
+            
+            for(String sql: mutatedSeed) {
+                createTable = new SQLQueryAdapter(sql, globalState.getExpectedErrors(), true);
+                boolean success = globalState.executeStatement(createTable);
+                if(success) {
+                    globalState.insertIntoHistory(createTable.getQueryString());
+                }
+
+            }
+
         }
 
         StatementExecutor<MySQLGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),

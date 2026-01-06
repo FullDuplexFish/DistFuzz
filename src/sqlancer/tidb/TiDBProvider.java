@@ -359,6 +359,16 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
         errors.add("Column 'a' has a partitioning function dependency and cannot be dropped or renamed");
         errors.add("Unsupported modify column");
         errors.add("Not unique table/alias");
+        errors.add("not support");
+        errors.add("doesn't exist");
+        errors.add("Unsupported");
+        errors.add("contains a disallowed function");
+        errors.add("Invalid auto random: Explicit insertion on auto_random column is disabled. Try to set @@allow_auto_random_explicit_insert = true.");
+        errors.add("is not VIEW");
+        errors.add("can't drop column c0 with composite index covered or Primary Key covered now");
+        errors.add("PARTITION () clause on non partitioned table");
+        errors.add("is not SEQUENCE");
+        errors.add("A table must have at least 1 column");
     }
     List<String> mutateSeed(TiDBGlobalState state, String sql) {
         TiDBMutator mutator = new TiDBMutator(state, sql);

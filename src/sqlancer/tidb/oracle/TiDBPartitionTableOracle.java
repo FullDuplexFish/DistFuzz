@@ -78,7 +78,13 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         }catch(Exception e) {
             e.printStackTrace();
         }
-        List<String> queries = state.mutateSQLQueries(state.getSQLQueries());
+        List<String> queries = null;
+        if(state.getRandomly().getBoolean()) {
+            queries = state.mutateSQLQueries(state.getSQLQueries());
+        }else{
+            queries = state.getSQLQueries();
+        }
+        
         System.out.println("queries are:");
         for(String str: queries) {
             System.out.println(str);
@@ -162,7 +168,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         System.out.println("appending partitions");
         stmt.setStmt(trimString(stmt.getStmt()));
 
-        switch((int)state.getRandomly().getNotCachedInteger(0, 1)) {
+        switch((int)state.getRandomly().getNotCachedInteger(0, 6)) {
             case(0):
                 generateRangePartition(stmt);
                 break;
@@ -304,7 +310,7 @@ public class TiDBPartitionTableOracle implements TestOracle<TiDBGlobalState> {
         str += "partition p" + String.valueOf(cnt) + " values less than maxvalue);";
         
         stmt.setStmt(str);
-        System.out.println("trigger range oracle " + str);
+        //System.out.println("trigger range oracle " + str);
         return;
         
     }

@@ -36,27 +36,21 @@ import sqlancer.tidb.ast.TiDBText;
 import sqlancer.tidb.gen.TiDBHintGenerator;
 import sqlancer.tidb.visitor.TiDBVisitor;
 
-public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
+public class TiDBNoOracle implements TestOracle<TiDBGlobalState> {
     private TiDBExpressionGenerator gen;
     private final TiDBGlobalState state;
     private TiDBSelect select;
     private final ExpectedErrors errors = new ExpectedErrors();
 
 
-    public TiDBOptRuleBlacklistOracle(TiDBGlobalState globalState) {
+    public TiDBNoOracle(TiDBGlobalState globalState) {
         state = globalState;
         TiDBErrors.addExpressionErrors(errors);
     }
 
     @Override
     public void check() throws Exception {
-        List<String> queries = null;
-        if(state.getRandomly().getBoolean()) {
-            queries = state.mutateSQLQueries(state.getSQLQueries());
-        }else{
-            queries = state.getSQLQueries();
-        }
-        
+        List<String> queries = state.mutateSQLQueries(state.getSQLQueries());
         opt_rule_blacklist_oracle(queries);
     }
 
@@ -105,10 +99,10 @@ public class TiDBOptRuleBlacklistOracle implements TestOracle<TiDBGlobalState> {
         state.getManager().incrementSelectQueryCount((long)queries.size());*/
 
         for(String query: queries) {
-            clearOptBlacklist();
+            //clearOptBlacklist();
             List<String> firstResult = ComparatorHelper.getResultSetFirstColumnAsString(query, errors,
                 state);
-            insertOptBlacklist();
+            //insertOptBlacklist();
             List<String> secondResult = ComparatorHelper.getResultSetFirstColumnAsString(query, errors,
                 state);
             String msg = ComparatorHelper.assumeResultSetsAreEqualByBatch(firstResult, secondResult, List.of(query), List.of(query),

@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import sqlancer.Randomly;
 import sqlancer.mysql.MySQLGlobalState;
+import sqlancer.mysql.MySQLSchema.MySQLColumn;
 import sqlancer.mysql.MySQLSchema.MySQLTables;
 import sqlancer.mysql.ast.MySQLConstant;
 import sqlancer.mysql.ast.MySQLExpression;
@@ -46,6 +47,7 @@ public final class MySQLRandomQuerySynthesizer {
         if (Randomly.getBoolean()) {
             select.setWhereClause(gen.generateExpression());
         }
+        
         if (Randomly.getBooleanWithRatherLowProbability()) {
             select.setOrderByClauses(gen.generateOrderBys());
         }

@@ -50,6 +50,17 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
                 throw new AssertionError(this);
             }
         }
+        public Boolean isInt() {
+            if(this == MySQLDataType.INT) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        public MySQLDataType getPrimitiveDataType() {
+            return this;
+        }
 
     }
 
@@ -132,27 +143,27 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
 
     }
 
-    private static MySQLDataType getColumnType(String typeString) {
-        switch (typeString) {
-        case "tinyint":
-        case "smallint":
-        case "mediumint":
-        case "int":
-        case "bigint":
+    public static MySQLDataType getColumnType(String typeString) {
+        typeString = typeString.toLowerCase();
+        if (typeString.contains("tinyint") || 
+            typeString.contains("smallint") || 
+            typeString.contains("mediumint") || 
+            typeString.contains("int") || 
+            typeString.contains("bigint")) {
             return MySQLDataType.INT;
-        case "varchar":
-        case "tinytext":
-        case "mediumtext":
-        case "text":
-        case "longtext":
+        } else if (typeString.contains("varchar") || 
+                typeString.contains("tinytext") || 
+                typeString.contains("mediumtext") || 
+                typeString.contains("text") || 
+                typeString.contains("longtext")) {
             return MySQLDataType.VARCHAR;
-        case "double":
+        } else if (typeString.contains("double")) {
             return MySQLDataType.DOUBLE;
-        case "float":
+        } else if (typeString.contains("float")) {
             return MySQLDataType.FLOAT;
-        case "decimal":
+        } else if (typeString.contains("decimal")) {
             return MySQLDataType.DECIMAL;
-        default:
+        } else {
             throw new AssertionError(typeString);
         }
     }
@@ -269,7 +280,7 @@ public class MySQLSchema extends AbstractSchema<MySQLGlobalState, MySQLTable> {
         return indexes;
     }
 
-    private static List<MySQLColumn> getTableColumns(SQLConnection con, String tableName, String databaseName)
+    public static List<MySQLColumn> getTableColumns(SQLConnection con, String tableName, String databaseName)
             throws SQLException {
         List<MySQLColumn> columns = new ArrayList<>();
         try (Statement s = con.createStatement()) {

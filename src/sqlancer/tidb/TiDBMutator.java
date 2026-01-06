@@ -10,6 +10,7 @@ import sqlancer.tidb.TiDBSchema.TiDBTable;
 import sqlancer.tidb.visitor.TiDBVisitor;
 import sqlancer.GlobalState;
 import sqlancer.Randomly;
+import sqlancer.common.AbstractMutator;
 import sqlancer.common.DecodedStmt;
 
 import java.io.BufferedReader;
@@ -25,11 +26,12 @@ import java.util.stream.Collectors;
 
 import com.alibaba.fastjson.JSON;
 
-public class TiDBMutator{
+public class TiDBMutator extends AbstractMutator{
 
     static TiDBGlobalState state;
     DecodedStmt decodedStmt;
     public TiDBMutator(TiDBGlobalState state, String sql) {
+        super(state,sql);
         this.state = state;
         decodedStmt = TiDBSQLParser.parse(sql, state.getDatabaseName());
     }
@@ -121,7 +123,7 @@ public class TiDBMutator{
                 if (i++ != 0) {
                     sb.append(", ");
                 }
-                if(c.getName() != partitionKey) {
+                if(!c.getName().equals(partitionKey)) {
                     sb.append(TiDBVisitor.asString(gen.generateConstant(c.getType().getPrimitiveDataType())));
                 }else{
                     sb.append(bounds.get(nrRows));
@@ -217,30 +219,7 @@ public class TiDBMutator{
         res.addAll(inserts);
         return res;
     }
-    public String mutateDQL() {
-        String sql = decodedStmt.getStmt();
-        String col = getRandomIntColumnStringUsingParser();
-        if(col == null) {
-            return sql;
-        }
-        if(state.getRandomly().getBoolean()) {
-            sql += " and ";
-        }else{
-            sql += " or ";
-        }
-        int leftBound = (int)state.getRandomly().getNotCachedInteger(-10000, 100000);
-        int rightBound = (int)state.getRandomly().getNotCachedInteger(leftBound, 100000000);
-        sql += " col >= " + Integer.toString(leftBound);
-        if(state.getRandomly().getBoolean()) {
-            sql += " and ";
-        }else{
-            sql += " or ";
-        }
-        sql += " col <= " + Integer.toString(rightBound);
-        decodedStmt.setStmt(sql);
-        return sql;
-
-    }
+ 
     public List<String> mutateSQL() {
         if(decodedStmt.getStmtType() == stmtType.DDL) {
             return mutateDDL();
