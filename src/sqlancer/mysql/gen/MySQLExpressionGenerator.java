@@ -105,18 +105,18 @@ public class MySQLExpressionGenerator extends UntypedExpressionGenerator<MySQLEx
             }
             return new MySQLInOperation(expr, rightList, Randomly.getBoolean());
         case BINARY_OPERATION:
-            if (MySQLBugs.bug99135) {
-                throw new IgnoreMeException();
-            }
+            // if (MySQLBugs.bug99135) {
+            //     throw new IgnoreMeException();
+            // }
             return new MySQLBinaryOperation(generateExpression(depth + 1), generateExpression(depth + 1),
                     MySQLBinaryOperator.getRandom());
         case EXISTS:
             return getExists();
         case BETWEEN_OPERATOR:
-            if (MySQLBugs.bug99181) {
-                // TODO: there are a number of bugs that are triggered by the BETWEEN operator
-                throw new IgnoreMeException();
-            }
+            // if (MySQLBugs.bug99181) {
+            //     // TODO: there are a number of bugs that are triggered by the BETWEEN operator
+            //     throw new IgnoreMeException();
+            // }
             return new MySQLBetweenOperation(generateExpression(depth + 1), generateExpression(depth + 1),
                     generateExpression(depth + 1));
         case CASE_OPERATOR:

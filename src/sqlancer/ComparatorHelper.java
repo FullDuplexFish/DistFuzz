@@ -55,7 +55,8 @@ public final class ComparatorHelper {
         try {
             result = q.executeAndGet(state);
             if (result == null) {
-                throw new IgnoreMeException();
+                //throw new IgnoreMeException();
+                throw new AssertionError("null resultset " + queryString);
             }
             while (result.next()) {
                 String resultTemp = result.getString(1);

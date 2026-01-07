@@ -98,10 +98,10 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             nrPerformed = r.getInteger(0, 1);
             break;
         case SET_VARIABLE:
-            nrPerformed = r.getInteger(0, 5);
+            nrPerformed = r.getInteger(0, 2);
             break;
         case CREATE_INDEX:
-            nrPerformed = r.getInteger(0, 5);
+            nrPerformed = r.getInteger(0, 3);
             break;
         case FLUSH:
             nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
@@ -126,13 +126,13 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             nrPerformed = r.getInteger(0, 2);
             break;
         case SELECT_INFO:
-            nrPerformed = r.getInteger(0, 10);
+            nrPerformed = r.getInteger(0, 2);
             break;
         case UPDATE:
-            nrPerformed = r.getInteger(0, 10);
+            nrPerformed = r.getInteger(0, 7);
             break;
         case DELETE:
-            nrPerformed = r.getInteger(0, 10);
+            nrPerformed = r.getInteger(0, 7);
             break;
         default:
             throw new AssertionError(a);
@@ -198,6 +198,11 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         globalState.getExpectedErrors().add("already exists");
         globalState.getExpectedErrors().add("Duplicate entry");
         globalState.getExpectedErrors().add("is ambiguous");
+        globalState.getExpectedErrors().add("Not unique table/alias");
+        globalState.getExpectedErrors().add("doesn't have a default value");
+        globalState.getExpectedErrors().add("A primary key index cannot be invisible");
+        globalState.getExpectedErrors().add("Cannot convert string");
+        globalState.getExpectedErrors().add("Data truncated for functional index");
 
     }
     List<String> mutateSeed(MySQLGlobalState state, String sql) {
@@ -213,7 +218,7 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             globalState.initHistory();
         }
         globalState.clearHistory();
-        while (globalState.getSchema().getDatabaseTables().size() < Randomly.getNotCachedInteger(1, 4)) {
+        while (globalState.getSchema().getDatabaseTables().size() < Randomly.getNotCachedInteger(2, 6)) {
             String tableName = DBMSCommon.createTableName(globalState.getSchema().getDatabaseTables().size());
             SQLQueryAdapter createTable = MySQLTableGenerator.generate(globalState, tableName);
             // boolean success = globalState.executeStatement(createTable);

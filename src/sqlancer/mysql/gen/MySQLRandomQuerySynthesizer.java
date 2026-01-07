@@ -10,8 +10,10 @@ import sqlancer.mysql.MySQLSchema.MySQLColumn;
 import sqlancer.mysql.MySQLSchema.MySQLTables;
 import sqlancer.mysql.ast.MySQLConstant;
 import sqlancer.mysql.ast.MySQLExpression;
+import sqlancer.mysql.ast.MySQLJoin;
 import sqlancer.mysql.ast.MySQLSelect;
 import sqlancer.mysql.ast.MySQLTableReference;
+import sqlancer.mysql.ast.MySQLText;
 
 public final class MySQLRandomQuerySynthesizer {
 
@@ -39,10 +41,16 @@ public final class MySQLRandomQuerySynthesizer {
                 hasGeneratedAggregate = true;
             }
         }
-        select.setFetchColumns(allColumns);
-
+        MySQLHintGenerator.generateHints(select, tables.getTables());
+                // Set the join.
+        List<MySQLJoin> joinExpressions = MySQLJoin.getRandomJoinClauses(tables.getTables(), globalState);
+        select.setJoinList(joinExpressions.stream().map(j -> (MySQLExpression) j).collect(Collectors.toList()));
+    
+        // Set the from clause from the tables that are not used in the join.
         List<MySQLExpression> tableList = tables.getTables().stream().map(t -> new MySQLTableReference(t))
                 .collect(Collectors.toList());
+        select.setFetchColumns(allColumns);
+
         select.setFromList(tableList);
         if (Randomly.getBoolean()) {
             select.setWhereClause(gen.generateExpression());

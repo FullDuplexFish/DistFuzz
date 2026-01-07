@@ -149,6 +149,7 @@ public class MySQLOptimizationOracle implements TestOracle<MySQLGlobalState> {
                     List<String> resultSet2 = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
                     ComparatorHelper.assumeResultSetsAreEqual(resultSet, resultSet2, cur, List.of(cur),
                     globalState);
+                    globalState.getManager().incrementSelectQueryCount();
                 }catch(Exception e) {
                     e.printStackTrace();
                 }
@@ -169,13 +170,14 @@ public class MySQLOptimizationOracle implements TestOracle<MySQLGlobalState> {
                     
                     for(String table : tables) {
                         if(Randomly.getBoolean())
-                            globalState.executeStatement(new SQLQueryAdapter("alter table " + table + " engine=innodb", this.errors, true));
+                            globalState.executeStatement(new SQLQueryAdapter("alter table " + table + " engine=innodb", this.errors, false));
                         else
-                            globalState.executeStatement(new SQLQueryAdapter("alter table " + table + " engine=MyISAM", this.errors, true));
+                            globalState.executeStatement(new SQLQueryAdapter("alter table " + table + " engine=MyISAM", this.errors, false));
                     }
                     List<String> resultSet2 = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
                     ComparatorHelper.assumeResultSetsAreEqual(resultSet, resultSet2, cur, List.of(cur),
                     globalState);
+                    globalState.getManager().incrementSelectQueryCount();
                 }catch(Exception e) {
                     e.printStackTrace();
                 }

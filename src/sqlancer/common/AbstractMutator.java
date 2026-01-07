@@ -51,7 +51,7 @@ public class AbstractMutator {
             pos = Math.min(pos, sql.toLowerCase().lastIndexOf("group by"));
         }
         if(sql.toLowerCase().contains("order by")) {
-            pos = Math.min(pos, sql.toLowerCase().lastIndexOf("group by"));
+            pos = Math.min(pos, sql.toLowerCase().lastIndexOf("order by"));
         }
         return pos;
     }

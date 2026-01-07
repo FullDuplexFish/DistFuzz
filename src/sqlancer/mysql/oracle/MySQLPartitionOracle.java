@@ -113,7 +113,7 @@ public class MySQLPartitionOracle implements TestOracle<MySQLGlobalState> {
                 for(String table : tables) {
                     String alter = "alter table " + table + " ";
                     alter = generateKeyPartition(alter, table);
-                    globalState.executeStatement(new SQLQueryAdapter(alter, this.errors, true));
+                    globalState.executeStatement(new SQLQueryAdapter(alter, this.errors, false));
                 }
                 List<String> resultSet = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
                 
