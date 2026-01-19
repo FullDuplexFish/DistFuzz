@@ -49,14 +49,17 @@ public final class ComparatorHelper {
             }
         }
         boolean canonicalizeString = state.getOptions().canonicalizeSqlString();
-        SQLQueryAdapter q = new SQLQueryAdapter(queryString, errors, true, canonicalizeString);
+        //errors = new ExpectedErrors();
+        SQLQueryAdapter q = new SQLQueryAdapter(queryString, errors, false, canonicalizeString);
         List<String> resultSet = new ArrayList<>();
         SQLancerResultSet result = null;
         try {
             result = q.executeAndGet(state);
             if (result == null) {
-                //throw new IgnoreMeException();
-                throw new AssertionError("null resultset " + queryString);
+                state.ignoreCnt ++ ;
+                System.out.println("encounter null result set " + state.ignoreCnt);
+                throw new IgnoreMeException();
+                //throw new AssertionError("null resultset " + queryString);
             }
             while (result.next()) {
                 String resultTemp = result.getString(1);

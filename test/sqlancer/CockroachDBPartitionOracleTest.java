@@ -1,4 +1,5 @@
-package sqlancer.mysql;
+package sqlancer;
+
 
 
 import static org.mockito.ArgumentMatchers.anyString;
@@ -23,45 +24,53 @@ import sqlancer.Main;
 import sqlancer.MainOptions;
 import sqlancer.Randomly;
 import sqlancer.common.query.SQLQueryAdapter;
-import sqlancer.mysql.MySQLSchema.MySQLTables;
+import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBTables;
+import sqlancer.tidb.gen.TiDBTableGenerator;
+import sqlancer.cockroachdb.CockroachDBProvider.CockroachDBGlobalState;
+import sqlancer.cockroachdb.CockroachDBOptions;
+import sqlancer.cockroachdb.CockroachDBSchema;
+import sqlancer.cockroachdb.oracle.CockroachDBPartitionOracle;
+import sqlancer.tidb.oracle.TiDBPlacementRuleOracle;
+import sqlancer.tidb.visitor.TiDBVisitor;
 
+public class CockroachDBPartitionOracleTest {
 
-public class MySQLMutatorTest {
-
-
-    MySQLGlobalState state;
-    MySQLMutator mutator;
+    CockroachDBPartitionOracle oracle;
+    CockroachDBPartitionOracle spyOracle;
+    CockroachDBGlobalState state;
     @BeforeEach
     private void init(){
         
-        MySQLGlobalState originalState = new    MySQLGlobalState();
+        CockroachDBGlobalState originalState = new CockroachDBGlobalState();
         state = Mockito.spy(originalState);
-
+        
+        
         Main.QueryManager manager = mock(Main.QueryManager.class);
         
 
-        MySQLSchema schema = mock(MySQLSchema.class);
+        CockroachDBSchema schema = mock(CockroachDBSchema.class);
         MainOptions op = mock(MainOptions.class);
         Randomly ran = mock(Randomly.class);
-        MySQLTables tables = mock(MySQLTables.class);
+        CockroachDBTables tables = mock(CockroachDBTables.class);
         //List<TiDBOracleFactory> oracle = Arrays.asList(TiDBOracleFactory.QUERY_PARTITIONING);
-        MySQLOptions dbmsop = mock(MySQLOptions.class);
+        CockroachDBOptions dbmsop = mock(CockroachDBOptions.class);
         List<String> creates = new ArrayList<String>();
         creates.add("create table t0(c1 int)");
+        creates.add("create table t0 like t1");
         creates.add("create table t1(c1 int) partition by hash(c1) partitions 7");
-        creates.add("create table t3(c0 float zerofill check (c0) default null );");
+        creates.add("create table t0(t01 bool unsigned zerofill )");
+        creates.add("create table t0 (a int, b char) partition by hash(a) partitions 13;");
         creates.add("insert into t0 values(1)");
         List<String> queries = new ArrayList<String>();
         queries.add("select t1.c1, t0.c1 from t0 natural join t1 where t0.c1 > 0");
+        List<String> tList = new ArrayList<String>();
+        tList.add("t0");
 
 
         try{
             when(schema.getFreeTableName()).thenReturn("t0");
             when(op.getMaxExpressionDepth()).thenReturn(3);
             when(ran.getInteger()).thenReturn(5L);
-            when(ran.getString()).thenReturn("asdasd");
-            
-            when(ran.getDouble()).thenReturn(1.5);
             //when(dbmsop.getTestOracleFactory()).thenReturn(oracle);
      
             Mockito.doReturn(schema).when(state).getSchema();
@@ -74,30 +83,29 @@ public class MySQLMutatorTest {
             Mockito.doNothing().when(manager).incrementSelectQueryCount();
             Mockito.doReturn(manager).when(state).getManager();
             
-            Mockito.doReturn("c1").when(state).getRandomIntColumnString(Mockito.any());
+            
+            //Mockito.doReturn("c1").when(state).getRandomIntColumnString(Mockito.any());
             Mockito.doReturn("c1;NUM").when(state).getRandomColumnStrings(Mockito.any());
-
-
-
+            oracle = new CockroachDBPartitionOracle(state);
+            spyOracle = Mockito.spy(oracle);
+            Mockito.doReturn(queries).when(spyOracle).generateMultipleQueries();
+            Mockito.doReturn(tList).when(spyOracle).getTables();
+            //Mockito.doReturn(queries).when(state).getSQLQueries();
         }catch(Exception e) {
             e.printStackTrace();
         }
     }
 
     @Test
-    public void testMutateDDL() {
+    public void testCockroachDBPartitionOracle() {
         List<String> tmp = new ArrayList<String>();
         tmp.add("100");
         try(MockedStatic<ComparatorHelper> visitor = Mockito.mockStatic(ComparatorHelper.class)){
             visitor.when(() -> ComparatorHelper.getResultSetFirstColumnAsString(Mockito.any(),Mockito.any(),Mockito.any()))
               .thenReturn(tmp);
             //state.initHistory();
-            //mutator = new MySQLMutator(state, "create table t3(c0 tinyint, c1 double, c2 varchar(255));");
-            //mutator = new MySQLMutator(state, "select c1 from t0 where c2 > 1;");
-            //mutator = new MySQLMutator(state, "create table if not exists t1(c0 tinyint(245) zerofill  storage disk, c1 float  comment 'asdf'  unique key  column_format default storage disk null, c2 float   comment 'asdf'  column_format dynamic storage disk )");
-            //System.out.println("yeah");
-            mutator = new MySQLMutator(state, "SELECT /*+ ORDER_INDEX(t1, c0)*/ DISTINCT MIN( EXISTS (SELECT 1)) AS ref0 FROM t2, t1 WHERE (NULL) BETWEEN (t2.c0) AND (t1.c0)");
-            System.out.println(mutator.mutateDQL());
+            spyOracle.check();
+            //System.out.println(state.getHistory());
 
  
         }catch(Exception e) {
@@ -106,4 +114,3 @@ public class MySQLMutatorTest {
     }
 
 }
-

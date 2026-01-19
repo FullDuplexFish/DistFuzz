@@ -31,6 +31,19 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
             return CockroachDBCompositeDataType.getRandomForType(this);
         }
 
+        public boolean isNumeric() {
+            switch (this) {
+            case INT:
+            case FLOAT:
+            case DECIMAL:
+                return true;
+            case STRING:
+                return false;
+            default:
+                throw new AssertionError(this);
+            }
+        }
+
     }
 
     public static class CockroachDBCompositeDataType {
@@ -333,7 +346,7 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
         return indexes;
     }
 
-    private static List<CockroachDBColumn> getTableColumns(SQLConnection con, String tableName) throws SQLException {
+    public static List<CockroachDBColumn> getTableColumns(SQLConnection con, String tableName) throws SQLException {
         List<CockroachDBColumn> columns = new ArrayList<>();
         try (Statement s = con.createStatement()) {
             try (ResultSet rs = s.executeQuery("SHOW COLUMNS FROM " + tableName)) {
@@ -341,6 +354,9 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
                     String columnName = rs.getString("column_name");
                     if (columnName.contains("crdb_internal")) {
                         continue; // created for CREATE INDEX ON t0(c0) USING HASH WITH BUCKET_COUNT = 1;
+                    }
+                    if(columnName.contains("rowid")) {
+                        continue;
                     }
                     String dataType = rs.getString("data_type");
                     boolean isNullable = rs.getBoolean("is_nullable");

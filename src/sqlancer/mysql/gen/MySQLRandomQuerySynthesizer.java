@@ -42,7 +42,7 @@ public final class MySQLRandomQuerySynthesizer {
             }
         }
         MySQLHintGenerator.generateHints(select, tables.getTables());
-                // Set the join.
+        // Set the join.
         List<MySQLJoin> joinExpressions = MySQLJoin.getRandomJoinClauses(tables.getTables(), globalState);
         select.setJoinList(joinExpressions.stream().map(j -> (MySQLExpression) j).collect(Collectors.toList()));
     

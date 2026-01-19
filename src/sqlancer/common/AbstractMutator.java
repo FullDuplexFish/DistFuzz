@@ -17,8 +17,9 @@ public class AbstractMutator {
     }
     public List<String> extract_column_name_from_stmt(String sql) {
         // 正则表达式：匹配以 c 开头，后面跟数字的列名
-        String regex = "\\bc\\d+\\b"; // \b 表示单词边界，以避免匹配到类似 t1234abc 的表名
+        //String regex = "\\bc\\d+\\b"; // \b 表示单词边界，以避免匹配到类似 t1234abc 的表名
         
+        String regex = "\\b\\w+?\\.c\\d+\\b|\\bc\\d+\\b";
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(sql);
         
@@ -35,6 +36,11 @@ public class AbstractMutator {
     public String getRandomColumnStringUsingRegex() {
         List<String> cols = extract_column_name_from_stmt(sql);
         if(cols.size() == 0) return null;
+        for(String cur : cols) {
+            if(cur.contains(".")) {
+                return cur;
+            }
+        }
         return state.getRandomly().fromList(cols);
     }
     private int find_insert_pos() {

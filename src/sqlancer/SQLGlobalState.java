@@ -14,7 +14,7 @@ import sqlancer.common.schema.AbstractSchema;
  */
 public abstract class SQLGlobalState<O extends DBMSSpecificOptions<?>, S extends AbstractSchema<?, ?>>
         extends GlobalState<O, S, SQLConnection> {
-    
+    public static int ignoreCnt = 0;
     @Override
     protected void executeEpilogue(Query<?> q, boolean success, ExecutionTimer timer) throws Exception {
         boolean logExecutionTime = getOptions().logExecutionTime();

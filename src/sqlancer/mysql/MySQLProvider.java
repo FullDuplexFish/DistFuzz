@@ -86,29 +86,29 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         int nrPerformed = 0;
         switch (a) {
         case DROP_INDEX:
-            nrPerformed = r.getInteger(0, 2);
+            nrPerformed = r.getInteger(0, 5);
             break;
         case SHOW_TABLES:
-            nrPerformed = r.getInteger(0, 1);
+            nrPerformed = r.getInteger(0, 5);
             break;
         case INSERT:
-            nrPerformed = r.getInteger(0, globalState.getOptions().getMaxNumberInserts());
+            nrPerformed = r.getInteger(0, 10);
             break;
         case REPAIR:
-            nrPerformed = r.getInteger(0, 1);
+            nrPerformed = r.getInteger(0, 5);
             break;
         case SET_VARIABLE:
-            nrPerformed = r.getInteger(0, 2);
+            nrPerformed = r.getInteger(0, 5);
             break;
         case CREATE_INDEX:
-            nrPerformed = r.getInteger(0, 3);
+            nrPerformed = r.getInteger(0, 5);
             break;
         case FLUSH:
             nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
             break;
         case OPTIMIZE:
             // seems to yield low CPU utilization
-            nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 1) : 0;
+            nrPerformed = Randomly.getBooleanWithSmallProbability() ? r.getInteger(0, 5) : 0;
             break;
         case RESET:
             // affects the global state, so do not execute
@@ -117,22 +117,22 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         case CHECKSUM:
         case CHECK_TABLE:
         case ANALYZE_TABLE:
-            nrPerformed = r.getInteger(0, 2);
-            break;
-        case ALTER_TABLE:
             nrPerformed = r.getInteger(0, 5);
             break;
+        case ALTER_TABLE:
+            nrPerformed = r.getInteger(0, 10);
+            break;
         case TRUNCATE_TABLE:
-            nrPerformed = r.getInteger(0, 2);
+            nrPerformed = r.getInteger(0, 5);
             break;
         case SELECT_INFO:
-            nrPerformed = r.getInteger(0, 2);
+            nrPerformed = r.getInteger(0, 3);
             break;
         case UPDATE:
-            nrPerformed = r.getInteger(0, 7);
+            nrPerformed = r.getInteger(0, 10);
             break;
         case DELETE:
-            nrPerformed = r.getInteger(0, 7);
+            nrPerformed = r.getInteger(0, 10);
             break;
         default:
             throw new AssertionError(a);
@@ -159,6 +159,7 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
             ban_op = "set session optimizer_search_depth=10";
             list.add(ban_op);
         }
+        list.add("set @@sql_mode=''");
         for(String str : list) {
             try{
                 globalState.executeStatement(new SQLQueryAdapter(str, globalState.getExpectedErrors(), false));
@@ -203,6 +204,11 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         globalState.getExpectedErrors().add("A primary key index cannot be invisible");
         globalState.getExpectedErrors().add("Cannot convert string");
         globalState.getExpectedErrors().add("Data truncated for functional index");
+        globalState.getExpectedErrors().add("Cannot create a functional index on an expression that returns");
+        globalState.getExpectedErrors().add("has a functional index dependency and cannot be dropped or renamed.");
+        globalState.getExpectedErrors().add("BIGINT value is out of range");
+        globalState.getExpectedErrors().add("Specified key was too long");
+        globalState.getExpectedErrors().add("check that column/key exists");
 
     }
     List<String> mutateSeed(MySQLGlobalState state, String sql) {

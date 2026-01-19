@@ -13,6 +13,7 @@ import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPDistinctOracle;
 import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPExtendedWhereOracle;
 import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPGroupByOracle;
 import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPHavingOracle;
+import sqlancer.cockroachdb.oracle.CockroachDBPartitionOracle;
 import sqlancer.common.oracle.CERTOracle;
 import sqlancer.common.oracle.CompositeTestOracle;
 import sqlancer.common.oracle.NoRECOracle;
@@ -133,6 +134,13 @@ public enum CockroachDBOracleFactory implements OracleFactory<CockroachDBProvide
         public boolean requiresAllTablesToContainRows() {
             return true;
         }
-    };
+    },
+    PARTITION {
+        @Override
+        public TestOracle<CockroachDBProvider.CockroachDBGlobalState> create(
+                CockroachDBProvider.CockroachDBGlobalState globalState) throws Exception {
+            return new CockroachDBPartitionOracle(globalState);
+        }
+    }
 
 }

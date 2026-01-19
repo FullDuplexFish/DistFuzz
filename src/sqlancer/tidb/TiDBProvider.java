@@ -155,17 +155,18 @@ public class TiDBProvider extends SQLProviderAdapter<TiDBGlobalState, TiDBOption
             select.setJoinList(joins);
             select.setFromList(tableList);
             if (Randomly.getBoolean()) {
-                select.setWhereClause(gen.generateExpression());
+                select.setWhereClause(gen.generateExpression((int)this.getRandomly().getNotCachedInteger(1, 4)));
             }
             if (Randomly.getBooleanWithRatherLowProbability()) {
                 select.setOrderByClauses(gen.generateOrderBys());
             }
             if (Randomly.getBoolean()) {
-                select.setLimitClause(gen.generateExpression());
+                select.setLimitClause(gen.generateExpression((int)this.getRandomly().getNotCachedInteger(1, 2)));
             }
             if (Randomly.getBoolean()) {
-                select.setOffsetClause(gen.generateExpression());
+                select.setOffsetClause(gen.generateExpression((int)this.getRandomly().getNotCachedInteger(1, 2)));
             }
+            gen.mutate(select);
 
             String originalQueryString = TiDBVisitor.asString(select);
             return originalQueryString;

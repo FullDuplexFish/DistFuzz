@@ -39,7 +39,8 @@ public class MySQLMutator extends AbstractMutator{
         this.state = state;
     }
     private void removePartition() {
-        sql = sql.substring(0, sql.indexOf("partition"));
+        if(sql.toLowerCase().contains("partition")) 
+            sql = sql.substring(0, sql.toLowerCase().indexOf("partition"));
     }
     private String trimString(String str) {
         str = str.trim();

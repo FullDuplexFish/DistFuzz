@@ -20,13 +20,13 @@ import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLancerResultSet;
 
-public class MySQLOptimizationOracle implements TestOracle<MySQLGlobalState> {
+public class MySQLNoOracle implements TestOracle<MySQLGlobalState> {
 
     private final MySQLGlobalState globalState;
     private List<List<String> > queries;
     private final ExpectedErrors errors;
 
-    public MySQLOptimizationOracle(MySQLGlobalState globalState) {
+    public MySQLNoOracle(MySQLGlobalState globalState) {
         this.globalState = globalState;
         this.errors = globalState.getExpectedErrors();
         this.errors.add("only_full_group_by");
@@ -131,22 +131,16 @@ public class MySQLOptimizationOracle implements TestOracle<MySQLGlobalState> {
                             globalState.executeStatement(new SQLQueryAdapter(alter, this.errors, false));
                         }
                     }
-                    String ban_op = "set session optimizer_prune_level=0";
-                    globalState.executeStatement(new SQLQueryAdapter(ban_op, this.errors, false));
-                    ban_op = "set session optimizer_search_depth=0";
-                    globalState.executeStatement(new SQLQueryAdapter(ban_op, this.errors, false));
+
                     //ban_op = "SET session optimizer_switch = 'index_merge=off,index_merge_union=off,index_merge_sort_union=off,index_merge_intersection=off,engine_condition_pushdown=off,index_condition_pushdown=off,mrr=off,mrr_cost_based=off,block_nested_loop=off,batched_key_access=off,materialization=off,semijoin=off,loosescan=off,firstmatch=off,duplicateweedout=off,subquery_materialization_cost_based=off,use_index_extensions=off,condition_fanout_filter=off,derived_merge=off,use_invisible_indexes=off,skip_scan=off,hash_join=off,subquery_to_derived=off,prefer_ordering_index=off,derived_condition_pushdown=off,hash_set_operations=off';";
                     //globalState.executeStatement(new SQLQueryAdapter(ban_op, this.errors, false));
-                    close_optimization();
+                    //close_optimization();
                     List<String> resultSet = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
                     
-                    ban_op = "set session optimizer_prune_level=1";
-                    globalState.executeStatement(new SQLQueryAdapter(ban_op, this.errors, false));
-                    ban_op = "set session optimizer_search_depth=10";
-                    globalState.executeStatement(new SQLQueryAdapter(ban_op, this.errors, false));
+
                     //ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,use_invisible_indexes=on,skip_scan=on,hash_join=on,subquery_to_derived=on,prefer_ordering_index=on,derived_condition_pushdown=on,hash_set_operations=on';";
                     //globalState.executeStatement(new SQLQueryAdapter(ban_op, this.errors, false));
-                    open_optimization();
+                    //open_optimization();
                     List<String> resultSet2 = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
                     ComparatorHelper.assumeResultSetsAreEqual(resultSet, resultSet2, cur, List.of(cur),
                     globalState);

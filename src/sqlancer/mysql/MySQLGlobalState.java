@@ -12,6 +12,7 @@ import sqlancer.mysql.MySQLSchema.MySQLColumn;
 
 public class MySQLGlobalState extends SQLGlobalState<MySQLOptions, MySQLSchema> {
     public static ExpectedErrors errors = new ExpectedErrors();
+
     @Override
     protected MySQLSchema readSchema() throws SQLException {
         return MySQLSchema.fromConnection(getConnection(), getDatabaseName());

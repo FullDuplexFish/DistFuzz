@@ -20,7 +20,6 @@ import sqlancer.SQLConnection;
 import sqlancer.SQLGlobalState;
 import sqlancer.SQLProviderAdapter;
 import sqlancer.cockroachdb.CockroachDBProvider.CockroachDBGlobalState;
-import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBTable;
 import sqlancer.cockroachdb.gen.CockroachDBCommentOnGenerator;
 import sqlancer.cockroachdb.gen.CockroachDBCreateStatisticsGenerator;
 import sqlancer.cockroachdb.gen.CockroachDBDeleteGenerator;
@@ -40,6 +39,7 @@ import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLQueryProvider;
 import sqlancer.common.query.SQLancerResultSet;
+import sqlancer.cockroachdb.CockroachDBSchema.*;
 
 @AutoService(DatabaseProvider.class)
 public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalState, CockroachDBOptions> {
@@ -122,11 +122,65 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         protected CockroachDBSchema readSchema() throws SQLException {
             return CockroachDBSchema.fromConnection(getConnection(), getDatabaseName());
         }
+        public String getRandomColumnStrings(String table_name) {
+            try {
+                List<CockroachDBColumn> databaseColumns = CockroachDBSchema.getTableColumns(getConnection(), table_name);
+                String res = "";
+                String tp = "";
+                //getLogger().writeCurrent("querying the columns of " + table_name);
+                //getLogger().writeCurrent("size is " + databaseColumns.size());
+                if(databaseColumns.size() == 1) {
+                    CockroachDBColumn col = this.getRandomly().fromList(databaseColumns);
+                    res = col.getName();
+                    if(col.getType().getPrimitiveDataType().isNumeric())
+                        tp = "NUM";
+                    else 
+                        tp = "TEXT";
+                }else{
+                    int sz = (int)Randomly.getNotCachedInteger(1, databaseColumns.size());
+                    for(int i = 0; i < sz; i ++ ) {
+                        if(i != 0){ 
+                            res += ",";
+                            tp += ",";
+                        }
+                        int ran = (int)Randomly.getNotCachedInteger(0, databaseColumns.size());
+                        res += databaseColumns.get(ran).getName();
+                        //getLogger().writeCurrent("the type of column " + databaseColumns.get(ran).getName() + " is " + databaseColumns.get(ran).getType().getPrimitiveDataType());
+                        if(databaseColumns.get(ran).getType().getPrimitiveDataType().isNumeric())
+                            tp += "NUM";
+                        else 
+                            tp += "TEXT";
+                        databaseColumns.remove(ran);
+                    }
+                }
+                res += ";" + tp;
+                return res;
+                
+                
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
 
     }
-
+    public void updateExpectedErrors(CockroachDBGlobalState globalState) {
+        globalState.getExpectedErrors().add("could not produce a query plan conforming to the MERGE JOIN hint");
+        globalState.getExpectedErrors().add("LOOKUP can only be used with INNER or LEFT joins");
+        globalState.getExpectedErrors().add("unsupported comparison operator");
+        globalState.getExpectedErrors().add("there is no unique or exclusion constraint matching the ON CONFLICT specification");
+        globalState.getExpectedErrors().add("invalid cast");
+        globalState.getExpectedErrors().add("unknown signature");
+        globalState.getExpectedErrors().add("must appear in the GROUP BY clause or be used in an aggregate function");
+        globalState.getExpectedErrors().add("cannot determine type of empty array. Consider casting to the desired type, for example ARRAY[]::int[]");
+    }
     @Override
     public void generateDatabase(CockroachDBGlobalState globalState) throws Exception {
+        updateExpectedErrors(globalState);
+        if(globalState.getHistory() == null) {
+            globalState.initHistory();
+        }
+        globalState.clearHistory();
         QueryManager<SQLConnection> manager = globalState.getManager();
         MainOptions options = globalState.getOptions();
         List<String> standardSettings = new ArrayList<>();
@@ -135,11 +189,6 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         standardSettings.add("SET CLUSTER SETTING diagnostics.reporting.enabled    = false;");
         standardSettings.add("SET CLUSTER SETTING diagnostics.reporting.send_crash_reports = false;");
 
-        standardSettings.add("-- Disable the collection of metrics and hope that it helps performance");
-        standardSettings.add("SET CLUSTER SETTING sql.metrics.statement_details.enabled = 'off'");
-        standardSettings.add("SET CLUSTER SETTING sql.metrics.statement_details.plan_collection.enabled = 'off'");
-        standardSettings.add("SET CLUSTER SETTING sql.stats.automatic_collection.enabled = 'off'");
-        standardSettings.add("SET CLUSTER SETTING timeseries.storage.enabled = 'off'");
 
         if (globalState.getDbmsSpecificOptions().testHashIndexes) {
             standardSettings.add("set experimental_enable_hash_sharded_indexes='on';");
@@ -157,6 +206,9 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                 try {
                     SQLQueryAdapter q = CockroachDBTableGenerator.generate(globalState);
                     success = globalState.executeStatement(q);
+                    if(success) {
+                        globalState.getHistory().add(q.getQueryString());
+                    }
                 } catch (IgnoreMeException e) {
                     // continue trying
                 }
@@ -241,6 +293,9 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                 do {
                     query = nextAction.getQuery(globalState);
                     success = globalState.executeStatement(query);
+                    if(success) {
+                        globalState.getHistory().add(query.getQueryString());
+                    }
                 } while (!success && nrTries++ < 1000);
             } catch (IgnoreMeException e) {
 

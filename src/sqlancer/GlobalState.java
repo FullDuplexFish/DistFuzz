@@ -34,6 +34,7 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
         return history;
     }
     public void clearHistory() {
+        this.historyIsUsed = false;
         history.clear();
     }
     public void initHistory() {
@@ -137,7 +138,7 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
         // ] 需要转义为 \\]
         // ^ 如果不是开头，不需要特殊转义
         
-        String regex = "(?xi)                       # 忽略大小写和注释模式\n" +
+        String regex = 
                       "(?<=                        # 正向回顾\n" +
                       "    ^                       # 字符串开始\n" +
                       "    |                       # 或\n" +
@@ -147,7 +148,7 @@ public abstract class GlobalState<O extends DBMSSpecificOptions<?>, S extends Ab
                       "\\b" + escapedOldName + "\\b # 精确匹配表名\n" +
                       "(?=                         # 正向预测\n" +
                       "    [\\s.,();=               # 空白、点、逗号、右括号、分号、等号\n" +
-                      "     \\-+*/%&|^<>!~]        # 各种运算符\n" +
+                      "     \\-+*/%&|^<>!~@_]        # 各种运算符\n" +
                       "    |                       # 或\n" +
                       "    $                       # 字符串结束\n" +
                       ")";

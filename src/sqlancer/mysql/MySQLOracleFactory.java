@@ -20,6 +20,7 @@ import sqlancer.mysql.oracle.MySQLPivotedQuerySynthesisOracle;
 import sqlancer.tidb.TiDBProvider;
 import sqlancer.mysql.oracle.MySQLOptimizationOracle;
 import sqlancer.mysql.oracle.MySQLPartitionOracle;
+import sqlancer.mysql.oracle.MySQLNoOracle;
 
 public enum MySQLOracleFactory implements OracleFactory<MySQLGlobalState> {
 
@@ -108,13 +109,20 @@ public enum MySQLOracleFactory implements OracleFactory<MySQLGlobalState> {
         public TestOracle<MySQLGlobalState> create(MySQLGlobalState globalState) throws SQLException {
            List<TestOracle<MySQLGlobalState>> oracles = new ArrayList<>();
            try{
-                oracles.add(OPT_RULE.create(globalState));
                 oracles.add(PARTITION.create(globalState));
+                oracles.add(OPT_RULE.create(globalState));
+                
            }catch(Exception e) {
                 e.printStackTrace();
            }
             
             return new CompositeTestOracle<MySQLGlobalState>(oracles, globalState);
+        }
+    },
+    NO {
+        @Override
+        public TestOracle<MySQLGlobalState> create(MySQLGlobalState globalState) throws SQLException {
+            return new MySQLNoOracle(globalState);
         }
     }
 }

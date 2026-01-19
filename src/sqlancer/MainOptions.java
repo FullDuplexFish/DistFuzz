@@ -32,7 +32,7 @@ public class MainOptions {
 
     @Parameter(names = {
             "--max-expression-depth" }, description = "Specifies the maximum depth of randomly-generated expressions")
-    private int maxExpressionDepth = 3; // NOPMD
+    private int maxExpressionDepth = 1; // NOPMD
 
     @Parameter(names = {
             "--num-queries" }, description = "Specifies the number of queries to be issued to a database before creating a new database")
