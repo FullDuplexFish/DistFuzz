@@ -48,7 +48,8 @@ public class MySQLAlterTable {
         ROW_FORMAT, //
         STATS_AUTO_RECALC, //
         STATS_PERSISTENT, //
-        PACK_KEYS, RENAME("doesn't exist", "already exists"), /* WITH_WITHOUT_VALIDATION , */
+        PACK_KEYS, 
+        //RENAME("doesn't exist", "already exists"), /* WITH_WITHOUT_VALIDATION , */
         DROP_PRIMARY_KEY(
                 "ALGORITHM=INSTANT is not supported. Reason: Dropping a primary key is not allowed without also adding a new primary key. Try ALGORITHM=COPY/INPLACE.");
 
@@ -145,16 +146,16 @@ public class MySQLAlterTable {
             // sb.append(Randomly.fromOptions("WITHOUT", "WITH"));
             // sb.append(" VALIDATION");
             // break;
-            case RENAME:
-                sb.append("RENAME ");
-                if (Randomly.getBoolean()) {
-                    sb.append(Randomly.fromOptions("TO", "AS"));
-                    sb.append(" ");
-                }
-                sb.append("t");
-                sb.append(Randomly.smallNumber());
-                couldAffectSchema = true;
-                break;
+            // case RENAME:
+            //     sb.append("RENAME ");
+            //     if (Randomly.getBoolean()) {
+            //         sb.append(Randomly.fromOptions("TO", "AS"));
+            //         sb.append(" ");
+            //     }
+            //     sb.append("t");
+            //     sb.append(Randomly.smallNumber());
+            //     couldAffectSchema = true;
+            //     break;
             default:
                 throw new AssertionError(a);
             }

@@ -31,6 +31,7 @@ import sqlancer.cockroachdb.*;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLancerResultSet;
+import sqlancer.mysql.MySQLMutator;
 
 public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalState> {
 
@@ -170,13 +171,94 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
         queries = generateMultipleQueries();
         //this.globalState.getLogger().writeCurrent("executing oracle and query size is :" + queries.size());
         try{
-            partition_table_oracle();//this oracle has too many corner cases
-            if(globalState.getRandomly().getBoolean()) {
-                partition_table_oracle_simple();//simple version
-            }
+            optimization_oracle();
             
         }catch(Exception e) {
             e.printStackTrace();
+        }
+    }
+    public void open_optimization() throws SQLException {
+        
+        List<String> ban_op = new ArrayList<String>();
+        ban_op.add("SET vectorize = 'experimental_always'");
+        ban_op.add("SET distsql = always");
+        ban_op.add("SET override_multi_region_zone_config = true");
+        ban_op.add("SET enable_zigzag_join = on");
+        ban_op.add("SET parallel_scans = on");
+        ban_op.add("SET vectorize_row_count_threshold = 1");
+        ban_op.add("SET enable_zigzag_join = on");
+        ban_op.add("SET enable_lookup_join = on");
+        ban_op.add("SET enable_merge_join = on");
+        ban_op.add("SET enable_hash_join = on");
+        ban_op.add("SET optimizer_use_not_visible_indexes = on");
+        ban_op.add("SET reorder_joins_limit = 10;");
+        ban_op.add("SET implicit_select_for_update = on");
+        ban_op.add("SET use_cached_plans = on");
+                //String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on';";
+        try{
+            for(String str: ban_op) {
+                globalState.executeStatement(new SQLQueryAdapter(str, this.errors, false));
+            }
+            
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+    public void close_optimization() throws SQLException {
+        
+        List<String> ban_op = new ArrayList<String>();
+        ban_op.add("SET vectorize = off");                             // 关闭矢量化执行，走传统行式引擎
+        ban_op.add("SET distsql = off");                               // 关闭分布式执行，强制本地处理
+        ban_op.add("SET override_multi_region_zone_config = false");    // 恢复默认区域配置
+        ban_op.add("SET enable_zigzag_join = off");                    // 关闭复杂的双索引交叉连接
+        ban_op.add("SET parallel_scans = off");                        // 关闭并行扫描，走顺序扫描
+        ban_op.add("SET vectorize_row_count_threshold = 1000000");     // 极大化阈值，确保不触发矢量化
+        ban_op.add("SET enable_lookup_join = off");                    // 关闭 Lookup Join
+        ban_op.add("SET enable_merge_join = off");                     // 关闭 Merge Join
+        ban_op.add("SET enable_hash_join = off");                      // 关闭 Hash Join（强制走最基础的算子）
+        ban_op.add("SET optimizer_use_not_visible_indexes = off");     // 严禁使用不可见索引
+        ban_op.add("SET reorder_joins_limit = 0");                     // 禁用 Join 重排，按 SQL 书写顺序执行
+        ban_op.add("SET implicit_select_for_update = off");            // 禁用隐式锁升级
+        ban_op.add("SET use_cached_plans = off");                      // 禁用计划缓存，确保不重用旧的路径
+                //String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on';";
+        try{
+            for(String str: ban_op) {
+                globalState.executeStatement(new SQLQueryAdapter(str, this.errors, false));
+            }
+            
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+    public void optimization_oracle() throws SQLException {
+        for(String cur : queries) {
+
+                // if(globalState.getDbmsSpecificOptions().enableMutate && globalState.getRandomly().getBooleanWithSmallProbability()) {
+                //     CockroachDBMutator mutator = new CockroachDBMutator(globalState, cur);
+                //     cur = mutator.mutateDQL();
+                // }
+                List<String> tables = extract_table_name_from_stmt(cur);
+                try{
+                    for(String table : tables) {
+                        if(Randomly.getBoolean()) {
+                            String alter = "alter table " + table + " engine=NDBCLUSTER";
+                            globalState.executeStatement(new SQLQueryAdapter(alter, this.errors, false));
+                        }
+                    }
+
+
+                    close_optimization();
+                    List<String> resultSet = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
+
+                    open_optimization();
+                    List<String> resultSet2 = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
+                    ComparatorHelper.assumeResultSetsAreEqual(resultSet, resultSet2, cur, List.of(cur),
+                    globalState);
+                    globalState.getManager().incrementSelectQueryCount();
+                }catch(Exception e) {
+                    e.printStackTrace();
+                }
+            
         }
     }
 

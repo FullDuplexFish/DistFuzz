@@ -70,7 +70,7 @@ public class MySQLOptimizationOracle implements TestOracle<MySQLGlobalState> {
     List<List<String> > generateMultipleQueries() {
         List<String> arr = new ArrayList<String>();
         List<List<String> > res = new ArrayList<List<String>>();
-        for(int i = 0; i < 30; i ++ ) {
+        for(int i = 0; i < 1; i ++ ) {
             //globalState.getLogger().writeCurrent(Integer.toString(i));
             try{
                 String s = MySQLVisitor.asString(MySQLRandomQuerySynthesizer.generate(globalState, Randomly.smallNumber() + 1))

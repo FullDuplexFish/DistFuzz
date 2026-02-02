@@ -150,7 +150,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
     public List<String> generateMultipleQueries() {
 
         List<String> res = new ArrayList<String>();
-        for(int i = 0; i < 30; i ++ ) {
+        for(int i = 0; i < 1; i ++ ) {
             //globalState.getLogger().writeCurrent(Integer.toString(i));
             try{
                 String s = generateSelect();
@@ -170,10 +170,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
         queries = generateMultipleQueries();
         //this.globalState.getLogger().writeCurrent("executing oracle and query size is :" + queries.size());
         try{
-            partition_table_oracle();//this oracle has too many corner cases
-            if(globalState.getRandomly().getBoolean()) {
-                partition_table_oracle_simple();//simple version
-            }
+            //partition_table_oracle();//this oracle has too many corner cases
             
         }catch(Exception e) {
             e.printStackTrace();
@@ -182,140 +179,88 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
 
 
 
-    public void partition_table_oracle_simple() throws SQLException{
 
-        for(String cur : queries) {
-
-            List<String> tables = extract_table_name_from_stmt(cur);
-            try{
-
-                List<String> resultSet = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
-                
-                for(String table : tables) {
-                    globalState.executeStatement(new SQLQueryAdapter("alter table " + table + " partition by nothing", this.errors, false));
-                }
-                List<String> resultSet2 = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
-                ComparatorHelper.assumeResultSetsAreEqual(resultSet, resultSet2, cur, List.of(cur),
-                globalState);
-                globalState.getManager().incrementSelectQueryCount();
-            }catch(Exception e) {
-                e.printStackTrace();
-            }
+    private void process_create_table(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
+        /*if(str.toLowerCase().contains("partition")) {
+            str = str.substring(0, str.indexOf("partition"));//if ddl has partition definition, remove it
         }
-        
-    }
-    public void partition_table_oracle() throws SQLException {
-        try {
-            List<String> tables = getTables();
-            HashMap<String, Boolean> table_exists = new HashMap<String, Boolean>();
-            if(!globalState.historyIsUsed) {
-                for(int i = 0; i < history.size(); i ++ ) {
-                
-                    generate_partition_oracle_stmt(tables, table_exists, history.get(i));
-                }
-                globalState.historyIsUsed = true;
-            }
-            
-            
-            for(String cur : queries) {
-
-                    String q1 = cur;
-                    String q2 = q1;
-                    for(String table: tables) {
-                        if(q2.contains(table)) {
-                            //globalState.getLogger().writeCurrent("checking whether " + table + " in map");
-                            String newName = table + "_oracle";
-                            if(table_exists.containsKey(newName) && table_exists.get(newName) == true) {
-                                q2 = globalState.replaceStmtTableName(q2, table, newName);
-                            }
-                        }
-                    }
-                    System.out.println("results:" + q1 + " " + q2);
-                    compareResult(q1, q2);
-            }
-
-        }catch(Exception e) {
-            e.printStackTrace();
-
-        }
-    }
-    
-    public List<String> getTables() throws Exception {
-        SQLQueryAdapter q = new SQLQueryAdapter("show tables");
-        List<String> res = new ArrayList<String>();
-        try (SQLancerResultSet rs = q.executeAndGet(this.globalState)) {
-            if (rs != null) {
-                
-                while (rs.next()) {
-                    String name = rs.getString(2);
-                    if(!name.contains("oracle"))
-                        res.add(name);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } 
-        return res;
-    }
-    private String trimString(String str) {
+        String name = extract_table_name_from_stmt(str).get(0);
+        name = trimString(name);
+        str = str.replaceFirst(name, name + "_oracle");
         str = str.trim();
-        if(str.startsWith("`")) {
-            str = str.substring(1, str.length());
-        }
-        if(str.endsWith("`")) {
+        if(str.endsWith(";")) {
             str = str.substring(0, str.length() - 1);
         }
-        return str;
-    }
-    private void generate_partition_oracle_stmt(List<String> tables, HashMap<String, Boolean> table_exists, String str) throws Exception{
-        System.out.println("processing " + str);
-        int isCreate = 0;
-        String name = "";
-        this.errors.add("is not allowed in partition function");
-        if(str.toLowerCase().contains("create table") && !str.toLowerCase().contains("like")) {
-            isCreate = 1;
-            if(str.toLowerCase().contains("partition")) {
-                str = str.substring(0, str.indexOf("partition"));//if ddl has partition definition, remove it
-            }
-            name = extract_table_name_from_stmt(str).get(0);
-            name = trimString(name);
-            str = str.replaceFirst(name, name + "_oracle");
-            str = str.trim();
-            if(str.endsWith(";")) {
-                str = str.substring(0, str.length() - 1);
-            }
-            String drop_ex = "drop table if exists " + name + "_oracle;";
-
+        String drop_ex = "drop table if exists " + name + "_oracle;";
+        try {
             globalState.executeStatement(new SQLQueryAdapter(drop_ex, this.errors, true));
-            
-        }else if(str.toLowerCase().contains("create")) {//if str is create temporary table, view, or index
-            isCreate = 1;
-            if(str.toLowerCase().contains("create view")) {
-                name = extract_view_name_from_stmt(str.toLowerCase()).get(0);
-                tables.add(name);
-                str = str.replaceFirst(name, name + "_oracle");
-            }
-            else if(str.toLowerCase().contains("create index")) {
-                name = extract_index_name_from_stmt(str.toLowerCase()).get(0);
-                tables.add(name);
-                str = str.replaceFirst(name, name + "_oracle");
-            }
-            //globalState.executeStatement(new SQLQueryAdapter(str, this.errors, true));
+        }catch(Exception e) {
+            e.printStackTrace();
         }
         String query = "";
-        if(isCreate == 1) { 
-
-            query =  str;
-            boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
-                
-            addTableToMap(succ, table_exists, name);
-            return;
+        if(!globalState.getRandomly().getBoolean()) {
+            query =  generateKeyPartition(str, name);
+        }else{
+            query = str;
         }
         
-        System.out.println("before replace " + tables + table_exists + str);
-        query = replaceTableNameWithOracleName(tables, table_exists, str);
-        System.out.println("after replace " + query);
-        boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+        
+        try {
+            boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+            if(!succ) {
+                query = query.substring(0, query.indexOf("partition"));
+                succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+            }
+            addTableToMap(succ, table_exists, name);
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+            
+        return;*/
+        
+    }
+    private void process_create_table_like(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
+
+        List<String> names = extract_table_name_from_stmt(str);
+        str = replaceTableNameWithOracleName(tables, table_exists, str);
+        if(str.endsWith(";")) {
+            str = str.substring(0, str.length() - 1);
+        }
+        String drop_ex = "drop table if exists " + names.get(0) + "_oracle;";
+        try {
+            globalState.executeStatement(new SQLQueryAdapter(drop_ex, this.errors, true));
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            boolean succ = globalState.executeStatement(new SQLQueryAdapter(str, this.errors, true));
+            addTableToMap(succ, table_exists, names.get(0));
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+            
+        return;
+        
+    }
+    private void generate_partition_oracle_stmt(List<String> tables, HashMap<String, Boolean> table_exists, String str) throws Exception{
+
+        this.errors.add("is not allowed in partition function");
+        str = str.toLowerCase();
+        if(str.toLowerCase().contains("create table") && !str.toLowerCase().contains("like")) {
+            process_create_table(tables, table_exists, str);
+            
+        }else if(str.toLowerCase().contains("create table") && str.toLowerCase().contains("like")) {//create table like
+            process_create_table_like(tables, table_exists, str);
+        }
+        else if(str.toLowerCase().contains("create")) {//if str is create temporary table, view, or index, then ignore
+            globalState.executeStatement(new SQLQueryAdapter(str, this.errors, true));
+        }else{
+
+            String query = "";
+            query = replaceTableNameWithOracleName(tables, table_exists, str);
+            boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+        }
         //addTableToMap(succ, table_exists, name, flag);
     }
     private void addTableToMap(boolean succ, HashMap<String, Boolean> table_exists, String name) {
@@ -327,7 +272,23 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
         }
     }
     
-
+    
+    public String generateRangePartition(String str, String table_name) {
+        String col = globalState.getRandomColumnStrings(table_name);
+        if(col == null || Randomly.getBooleanWithRatherLowProbability()) {
+            col = "";
+        }else{
+            col = col.split(";")[0];
+        }
+        
+        
+        int pcnt = (int)Randomly.getNotCachedInteger(10, 100);
+        str += " partition by key(";
+        str += col;
+        str += ") partitions ";
+        str += String.valueOf(pcnt);
+        return str;
+    }
 
     public String replaceTableNameWithOracleName(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
         /*if(flag == 4) {
@@ -338,6 +299,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
             if(table_exists.containsKey(new_name) && table_exists.get(new_name) == true) {
                 str = globalState.replaceStmtTableName(str, name, new_name);
             }
+            //str = globalState.replaceStmtTableName(str, name, new_name);//rather than checking whether table exists, just ignore all 'not exists' is a better option
         }
         return str;
     }

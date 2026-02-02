@@ -209,6 +209,7 @@ public class MySQLProvider extends SQLProviderAdapter<MySQLGlobalState, MySQLOpt
         globalState.getExpectedErrors().add("BIGINT value is out of range");
         globalState.getExpectedErrors().add("Specified key was too long");
         globalState.getExpectedErrors().add("check that column/key exists");
+        globalState.getExpectedErrors().add("Can't group on");
 
     }
     List<String> mutateSeed(MySQLGlobalState state, String sql) {

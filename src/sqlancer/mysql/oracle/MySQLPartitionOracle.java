@@ -75,7 +75,7 @@ public class MySQLPartitionOracle implements TestOracle<MySQLGlobalState> {
     List<String> generateMultipleQueries() {
 
         List<String> res = new ArrayList<String>();
-        for(int i = 0; i < 30; i ++ ) {
+        for(int i = 0; i < 1; i ++ ) {
             //globalState.getLogger().writeCurrent(Integer.toString(i));
             try{
                 String s = MySQLVisitor.asString(MySQLRandomQuerySynthesizer.generate(globalState, Randomly.smallNumber() + 1))
@@ -97,9 +97,6 @@ public class MySQLPartitionOracle implements TestOracle<MySQLGlobalState> {
         this.globalState.getLogger().writeCurrent("executing oracle and query size is :" + queries.size());
         try{
             partition_table_oracle();//this oracle has too many corner cases
-            if(globalState.getRandomly().getBoolean()) {
-                partition_table_oracle_simple();//simple version
-            }
             
         }catch(Exception e) {
             e.printStackTrace();
@@ -202,42 +199,87 @@ public class MySQLPartitionOracle implements TestOracle<MySQLGlobalState> {
         }
         return str;
     }
-    private void generate_partition_oracle_stmt(List<String> tables, HashMap<String, Boolean> table_exists, String str) throws Exception{
-        int isCreate = 0;
-        String name = "";
-        this.errors.add("is not allowed in partition function");
-        if(str.toLowerCase().contains("create table") && !str.toLowerCase().contains("like")) {
-            isCreate = 1;
-            if(str.toLowerCase().contains("partition")) {
-                str = str.substring(0, str.indexOf("partition"));//if ddl has partition definition, remove it
-            }
-            name = extract_table_name_from_stmt(str).get(0);
-            name = trimString(name);
-            str = str.replaceFirst(name, name + "_oracle");
-            str = str.trim();
-            if(str.endsWith(";")) {
-                str = str.substring(0, str.length() - 1);
-            }
-            String drop_ex = "drop table if exists " + name + "_oracle;";
-
+    private void process_create_table(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
+        if(str.toLowerCase().contains("partition")) {
+            str = str.substring(0, str.indexOf("partition"));//if ddl has partition definition, remove it
+        }
+        String name = extract_table_name_from_stmt(str).get(0);
+        name = trimString(name);
+        str = str.replaceFirst(name, name + "_oracle");
+        str = str.trim();
+        if(str.endsWith(";")) {
+            str = str.substring(0, str.length() - 1);
+        }
+        String drop_ex = "drop table if exists " + name + "_oracle;";
+        try {
             globalState.executeStatement(new SQLQueryAdapter(drop_ex, this.errors, true));
-            
-        }else if(str.toLowerCase().contains("create")) {//if str is create temporary table, view, or index, then ignore
-            globalState.executeStatement(new SQLQueryAdapter(str, this.errors, true));
+        }catch(Exception e) {
+            e.printStackTrace();
         }
         String query = "";
-        if(isCreate == 1) { 
-
+        if(!globalState.getRandomly().getBoolean()) {
             query =  generateKeyPartition(str, name);
-            boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
-                
-            addTableToMap(succ, table_exists, name);
-            return;
+        }else{
+            query = str;
         }
         
+        
+        try {
+            boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+            if(!succ) {
+                query = query.substring(0, query.indexOf("partition"));
+                succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+            }
+            addTableToMap(succ, table_exists, name);
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+            
+        return;
+        
+    }
+    private void process_create_table_like(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
 
-        query = replaceTableNameWithOracleName(tables, table_exists, str);
-        boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+        List<String> names = extract_table_name_from_stmt(str);
+        str = replaceTableNameWithOracleName(tables, table_exists, str);
+        if(str.endsWith(";")) {
+            str = str.substring(0, str.length() - 1);
+        }
+        String drop_ex = "drop table if exists " + names.get(0) + "_oracle;";
+        try {
+            globalState.executeStatement(new SQLQueryAdapter(drop_ex, this.errors, true));
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            boolean succ = globalState.executeStatement(new SQLQueryAdapter(str, this.errors, true));
+            addTableToMap(succ, table_exists, names.get(0));
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+            
+        return;
+        
+    }
+    private void generate_partition_oracle_stmt(List<String> tables, HashMap<String, Boolean> table_exists, String str) throws Exception{
+
+        this.errors.add("is not allowed in partition function");
+        str = str.toLowerCase();
+        if(str.toLowerCase().contains("create table") && !str.toLowerCase().contains("like")) {
+            process_create_table(tables, table_exists, str);
+            
+        }else if(str.toLowerCase().contains("create table") && str.toLowerCase().contains("like")) {//create table like
+            process_create_table_like(tables, table_exists, str);
+        }
+        else if(str.toLowerCase().contains("create")) {//if str is create temporary table, view, or index, then ignore
+            globalState.executeStatement(new SQLQueryAdapter(str, this.errors, true));
+        }else{
+
+            String query = "";
+            query = replaceTableNameWithOracleName(tables, table_exists, str);
+            boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
+        }
         //addTableToMap(succ, table_exists, name, flag);
     }
     private void addTableToMap(boolean succ, HashMap<String, Boolean> table_exists, String name) {
