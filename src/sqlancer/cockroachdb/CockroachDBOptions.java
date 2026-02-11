@@ -30,6 +30,9 @@ public class CockroachDBOptions implements DBMSSpecificOptions<CockroachDBOracle
     @Parameter(names = { "--max-num-indexes" }, description = "The maximum number of indexes that can be created")
     public int maxNumIndexes = 20;
 
+    @Parameter(names = "--enable-mutate")
+    public boolean enableMutate = false;
+
     @Override
     public List<CockroachDBOracleFactory> getTestOracleFactory() {
         return Arrays.asList(oracle);

@@ -97,7 +97,9 @@ public class MySQLPartitionOracle implements TestOracle<MySQLGlobalState> {
         this.globalState.getLogger().writeCurrent("executing oracle and query size is :" + queries.size());
         try{
             partition_table_oracle();//this oracle has too many corner cases
-            
+            if(globalState.getRandomly().getBooleanWithSmallProbability()) {
+                partition_table_oracle_simple();
+            }
         }catch(Exception e) {
             e.printStackTrace();
         }

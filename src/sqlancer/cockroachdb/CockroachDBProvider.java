@@ -39,6 +39,8 @@ import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLQueryProvider;
 import sqlancer.common.query.SQLancerResultSet;
+import sqlancer.mysql.MySQLGlobalState;
+import sqlancer.mysql.MySQLMutator;
 import sqlancer.cockroachdb.CockroachDBSchema.*;
 
 @AutoService(DatabaseProvider.class)
@@ -174,6 +176,12 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().add("must appear in the GROUP BY clause or be used in an aggregate function");
         globalState.getExpectedErrors().add("cannot determine type of empty array. Consider casting to the desired type, for example ARRAY[]::int[]");
     }
+
+    List<String> mutateSeed(CockroachDBGlobalState state, String sql) {
+        CockroachDBMutator mutator = new CockroachDBMutator(state, sql);
+        List<String> res = mutator.mutateSQL();
+        return res;
+    }
     @Override
     public void generateDatabase(CockroachDBGlobalState globalState) throws Exception {
         updateExpectedErrors(globalState);
@@ -201,18 +209,27 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         }
 
         for (int i = 0; i < Randomly.fromOptions(2, 3); i++) {
-            boolean success = false;
-            do {
-                try {
-                    SQLQueryAdapter q = CockroachDBTableGenerator.generate(globalState);
-                    success = globalState.executeStatement(q);
-                    if(success) {
-                        globalState.getHistory().add(q.getQueryString());
-                    }
-                } catch (IgnoreMeException e) {
-                    // continue trying
+            try{
+                SQLQueryAdapter createTable = CockroachDBTableGenerator.generate(globalState);
+
+
+                List<String> mutatedSeed = List.of(createTable.getQueryString().toLowerCase());
+                if(globalState.getDbmsSpecificOptions().enableMutate) {
+                    mutatedSeed = mutateSeed(globalState, createTable.getQueryString());
                 }
-            } while (!success);
+                
+                for(String sql: mutatedSeed) {
+                    createTable = new SQLQueryAdapter(sql, globalState.getExpectedErrors(), true);
+                    boolean success = globalState.executeStatement(createTable);
+                    if(success) {
+                        globalState.insertIntoHistory(createTable.getQueryString());
+                    }
+    
+                }
+            } catch (IgnoreMeException e) {
+                // continue trying
+            }
+
         }
 
         int[] nrRemaining = new int[Action.values().length];

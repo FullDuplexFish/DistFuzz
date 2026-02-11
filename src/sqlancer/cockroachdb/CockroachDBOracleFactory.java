@@ -14,6 +14,7 @@ import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPExtendedWhereOracle;
 import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPGroupByOracle;
 import sqlancer.cockroachdb.oracle.tlp.CockroachDBTLPHavingOracle;
 import sqlancer.cockroachdb.oracle.CockroachDBPartitionOracle;
+import sqlancer.cockroachdb.oracle.CockroachDBOptimizeOracle;
 import sqlancer.common.oracle.CERTOracle;
 import sqlancer.common.oracle.CompositeTestOracle;
 import sqlancer.common.oracle.NoRECOracle;
@@ -140,6 +141,23 @@ public enum CockroachDBOracleFactory implements OracleFactory<CockroachDBProvide
         public TestOracle<CockroachDBProvider.CockroachDBGlobalState> create(
                 CockroachDBProvider.CockroachDBGlobalState globalState) throws Exception {
             return new CockroachDBPartitionOracle(globalState);
+        }
+    },
+    OPT {
+        @Override
+        public TestOracle<CockroachDBProvider.CockroachDBGlobalState> create(
+                CockroachDBProvider.CockroachDBGlobalState globalState) throws Exception {
+            return new CockroachDBOptimizeOracle(globalState);
+        }
+    },
+    DIST {
+        @Override
+        public TestOracle<CockroachDBProvider.CockroachDBGlobalState> create(
+                CockroachDBProvider.CockroachDBGlobalState globalState) throws Exception {
+            List<TestOracle<CockroachDBProvider.CockroachDBGlobalState>> oracles = new ArrayList<>();
+            oracles.add(PARTITION.create(globalState));
+            oracles.add(OPT.create(globalState));
+            return new CompositeTestOracle<CockroachDBProvider.CockroachDBGlobalState>(oracles, globalState);
         }
     }
 

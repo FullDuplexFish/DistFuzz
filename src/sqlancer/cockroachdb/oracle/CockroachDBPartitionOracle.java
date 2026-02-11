@@ -4,6 +4,9 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.stream.Collectors;
+
+import javax.xml.bind.annotation.XmlElementDecl.GLOBAL;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -11,7 +14,12 @@ import java.util.regex.Pattern;
 
 import sqlancer.ComparatorHelper;
 import sqlancer.Randomly;
-import sqlancer.cockroachdb.CockroachDBVisitor;
+import sqlancer.common.oracle.TestOracle;
+import sqlancer.cockroachdb.*;
+import sqlancer.cockroachdb.CockroachDBProvider.CockroachDBGlobalState;
+import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBColumn;
+import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBDataType;
+import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBTables;
 import sqlancer.cockroachdb.ast.CockroachDBColumnReference;
 import sqlancer.cockroachdb.ast.CockroachDBExpression;
 import sqlancer.cockroachdb.ast.CockroachDBJoin;
@@ -19,15 +27,7 @@ import sqlancer.cockroachdb.ast.CockroachDBJoin.JoinType;
 import sqlancer.cockroachdb.ast.CockroachDBSelect;
 import sqlancer.cockroachdb.ast.CockroachDBTableReference;
 import sqlancer.cockroachdb.gen.CockroachDBExpressionGenerator;
-import sqlancer.cockroachdb.CockroachDBBugs;
-import sqlancer.cockroachdb.CockroachDBCommon;
-import sqlancer.cockroachdb.CockroachDBProvider.CockroachDBGlobalState;
-import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBColumn;
-import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBDataType;
-import sqlancer.cockroachdb.CockroachDBSchema.CockroachDBTables;
-
-import sqlancer.common.oracle.TestOracle;
-import sqlancer.cockroachdb.*;
+import sqlancer.cockroachdb.gen.CockroachDBRandomQuerySynthesizer;
 import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLancerResultSet;
@@ -43,8 +43,6 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
         this.globalState = globalState;
         this.history = globalState.getHistory();
         this.errors = globalState.getExpectedErrors();
-
-
     }
     List<String> extract_table_name_from_stmt(String sql) {
         // 正则表达式：匹配以 t 开头，后面跟数字的表名
@@ -63,42 +61,8 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
                                .collect(Collectors.toList());
         return tableNames;
     }
-    List<String> extract_index_name_from_stmt(String sql) {
-        // 正则表达式：匹配以 t 开头，后面跟数字的表名
-        String regex = "\\bi\\d+\\b"; // \b 表示单词边界，以避免匹配到类似 t1234abc 的表名
-        
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(sql);
-        
-        List<String> tableNames = new ArrayList<>();
-        
-        while (matcher.find()) {
-            tableNames.add(matcher.group());
-        }
-        tableNames = tableNames.stream()
-                               .distinct()
-                               .collect(Collectors.toList());
-        return tableNames;
-    }
-    List<String> extract_view_name_from_stmt(String sql) {
-        // 正则表达式：匹配以 t 开头，后面跟数字的表名
-        String regex = "\\bv\\d+\\b"; // \b 表示单词边界，以避免匹配到类似 t1234abc 的表名
-        
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(sql);
-        
-        List<String> tableNames = new ArrayList<>();
-        
-        while (matcher.find()) {
-            tableNames.add(matcher.group());
-        }
-        tableNames = tableNames.stream()
-                               .distinct()
-                               .collect(Collectors.toList());
-        return tableNames;
-    }
  
-    private String generateSelect() {
+        private String generateSelect() {
         CockroachDBSelect select = new CockroachDBSelect();
         CockroachDBTables tables = globalState.getSchema().getRandomTableNonEmptyTables(2);
         List<CockroachDBExpression> tableList = CockroachDBCommon.getTableReferences(
@@ -150,7 +114,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
     public List<String> generateMultipleQueries() {
 
         List<String> res = new ArrayList<String>();
-        for(int i = 0; i < 1; i ++ ) {
+        for(int i = 0; i < 30; i ++ ) {
             //globalState.getLogger().writeCurrent(Integer.toString(i));
             try{
                 String s = generateSelect();
@@ -166,12 +130,12 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
     @Override
     public void check() throws Exception {
         System.out.println("executing partition oracle");
-        //this.globalState.getLogger().writeCurrent("executing oracle and history size is :" + history.size());
+        this.globalState.getLogger().writeCurrent("executing oracle and history size is :" + history.size());
         queries = generateMultipleQueries();
-        //this.globalState.getLogger().writeCurrent("executing oracle and query size is :" + queries.size());
+        this.globalState.getLogger().writeCurrent("executing oracle and query size is :" + queries.size());
         try{
-            //partition_table_oracle();//this oracle has too many corner cases
-            
+            partition_table_oracle();//this oracle has too many corner cases
+ 
         }catch(Exception e) {
             e.printStackTrace();
         }
@@ -180,8 +144,84 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
 
 
 
+    public void partition_table_oracle() throws SQLException {
+        try {
+            List<String> tables = getTables();
+            HashMap<String, Boolean> table_exists = new HashMap<String, Boolean>();
+            if(!globalState.historyIsUsed) {
+                for(int i = 0; i < history.size(); i ++ ) {
+                
+                    generate_partition_oracle_stmt(tables, table_exists, history.get(i));
+                }
+                globalState.historyIsUsed = true;
+            }
+            
+            
+            for(String cur : queries) {
+                    if(globalState.getRandomly().getBooleanWithSmallProbability()) {
+                        CockroachDBMutator mutator = new CockroachDBMutator(globalState, cur);
+                        cur = mutator.mutateDQL();
+                    }
+                    String q1 = cur;
+                    String q2 = q1;
+                    for(String table: tables) {
+                        if(q2.contains(table)) {
+                            //state.getLogger().writeCurrent("checking whether " + table + " in map");
+                            String newName = table + "_oracle";
+                            if(table_exists.containsKey(newName) && table_exists.get(newName) == true) {
+                                q2 = globalState.replaceStmtTableName(q2, table, newName);
+                            }
+                        }
+                    }
+                    compareResult(q1, q2);
+            }
+
+        }catch(Exception e) {
+            e.printStackTrace();
+
+        }
+    }
+    
+    public List<String> getTables() throws Exception {
+        SQLQueryAdapter q = new SQLQueryAdapter("show tables");
+        List<String> res = new ArrayList<String>();
+        try (SQLancerResultSet rs = q.executeAndGet(this.globalState)) {
+            if (rs != null) {
+                
+                while (rs.next()) {
+                    String name = rs.getString(1);
+                    if(!name.contains("oracle"))
+                        res.add(name);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } 
+        return res;
+    }
+    private String trimString(String str) {
+        str = str.trim();
+        if(str.startsWith("`")) {
+            str = str.substring(1, str.length());
+        }
+        if(str.endsWith("`")) {
+            str = str.substring(0, str.length() - 1);
+        }
+        return str;
+    }
+    private void addHashPartition(String name) {
+        String stmt = "create index on " + name + "(";
+        String col = globalState.getRandomColumnStrings(name);
+        stmt += col;
+        stmt += ") using hash";
+        try {
+            globalState.executeStatement(new SQLQueryAdapter(stmt, this.errors, true));
+        }catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
     private void process_create_table(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
-        /*if(str.toLowerCase().contains("partition")) {
+        if(str.toLowerCase().contains("partition")) {
             str = str.substring(0, str.indexOf("partition"));//if ddl has partition definition, remove it
         }
         String name = extract_table_name_from_stmt(str).get(0);
@@ -197,12 +237,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
         }catch(Exception e) {
             e.printStackTrace();
         }
-        String query = "";
-        if(!globalState.getRandomly().getBoolean()) {
-            query =  generateKeyPartition(str, name);
-        }else{
-            query = str;
-        }
+        String query = str;
         
         
         try {
@@ -212,11 +247,13 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
                 succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
             }
             addTableToMap(succ, table_exists, name);
+
+            addHashPartition(name);
         }catch(Exception e) {
             e.printStackTrace();
         }
             
-        return;*/
+        return;
         
     }
     private void process_create_table_like(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
@@ -245,7 +282,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
     }
     private void generate_partition_oracle_stmt(List<String> tables, HashMap<String, Boolean> table_exists, String str) throws Exception{
 
-        this.errors.add("is not allowed in partition function");
+  
         str = str.toLowerCase();
         if(str.toLowerCase().contains("create table") && !str.toLowerCase().contains("like")) {
             process_create_table(tables, table_exists, str);
@@ -273,27 +310,10 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
     }
     
     
-    public String generateRangePartition(String str, String table_name) {
-        String col = globalState.getRandomColumnStrings(table_name);
-        if(col == null || Randomly.getBooleanWithRatherLowProbability()) {
-            col = "";
-        }else{
-            col = col.split(";")[0];
-        }
-        
-        
-        int pcnt = (int)Randomly.getNotCachedInteger(10, 100);
-        str += " partition by key(";
-        str += col;
-        str += ") partitions ";
-        str += String.valueOf(pcnt);
-        return str;
-    }
+
 
     public String replaceTableNameWithOracleName(List<String> tables, HashMap<String, Boolean> table_exists, String str) {
-        /*if(flag == 4) {
-            return "select 1";
-        }*/
+
         for(String name : tables) {
             String new_name = name + "_oracle";
             if(table_exists.containsKey(new_name) && table_exists.get(new_name) == true) {
