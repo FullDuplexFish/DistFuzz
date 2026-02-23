@@ -189,7 +189,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
             if (rs != null) {
                 
                 while (rs.next()) {
-                    String name = rs.getString(1);
+                    String name = rs.getString(2);
                     if(!name.contains("oracle"))
                         res.add(name);
                 }
@@ -211,7 +211,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
     }
     private void addHashPartition(String name) {
         String stmt = "create index on " + name + "(";
-        String col = globalState.getRandomColumnStrings(name);
+        String col = globalState.getRandomColumnStrings(name).split(";")[0];
         stmt += col;
         stmt += ") using hash";
         try {
@@ -296,6 +296,12 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
 
             String query = "";
             query = replaceTableNameWithOracleName(tables, table_exists, str);
+            globalState.getLogger().writeCurrent("transforming stmt: " + str);
+            globalState.getLogger().writeCurrent("table exists:");
+            for(String table: tables) {
+                globalState.getLogger().writeCurrent(table);
+            }
+            globalState.getLogger().writeCurrent("after transform: " + query);
             boolean succ = globalState.executeStatement(new SQLQueryAdapter(query, this.errors, true));
         }
         //addTableToMap(succ, table_exists, name, flag);

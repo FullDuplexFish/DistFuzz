@@ -70,11 +70,14 @@ public class CockroachDBMutator extends AbstractMutator{
     }
 
     private void generateRangePartition(List<String> inserts) {
+        
         List<String> tables = extract_table_name_from_stmt(sql);
+        
         //System.out.println("extracted table name " + tables);
         if(tables.size() == 0) {
             return;
         }
+        state.getLogger().writeCurrent("mutating table " + tables.get(0));
         String table_name = tables.get(0);
         //System.out.println("here");
         String col = getRandomColumnStringUsingRegex();
@@ -82,6 +85,7 @@ public class CockroachDBMutator extends AbstractMutator{
         if(col == null) {//no int type column
             return;
         }
+        state.getLogger().writeCurrent("select column " + col + " as partition key");
         
         List<Integer> bounds = new ArrayList<Integer>();
         int range = (int)Randomly.getNotCachedInteger(10, 10000);
@@ -96,6 +100,7 @@ public class CockroachDBMutator extends AbstractMutator{
             bound = next_bound;
         }
         sql += "partition p" + String.valueOf(cnt) + " values from (" +  bound + ") to (maxvalue);";
+        state.getLogger().writeCurrent("after mutating " + sql);
         
 
         
@@ -167,44 +172,13 @@ public class CockroachDBMutator extends AbstractMutator{
         }
         return null;
     }
-    private void generateHashPartition(List<String> inserts) {
 
-        List<String> tables = extract_table_name_from_stmt(sql);
-        if(tables.size() == 0) {
-            return;
-        }
-        String table_name = tables.get(0);
-        String col = getRandomColumnStringUsingRegex();
-        
-        if(col == null) {
-            return;
-        }
-        int pcnt = (int)Randomly.getNotCachedInteger(10, 15);
-        sql += " partition by hash(";
-        sql += col;
-        sql += ") partitions ";
-        sql += String.valueOf(pcnt);
-
-        List<Integer> bounds = new ArrayList<Integer>();
-        int st = (int)state.getRandomly().getNotCachedInteger(-1000, 1000);
-        for(int i = 0; i < 20; i ++ ) {
-            bounds.add(i + st);
-        }
-        generateInsertsForBounds(col, bounds, inserts, table_name);
-        return;
-
-    }
     private void appendPartition(List<String> inserts) {
         sql = trimString(sql);
 
-        switch((int)state.getRandomly().getNotCachedInteger(0, 2)) {
-            case(0):
-                generateRangePartition(inserts);
-                break;
-            default:
-                generateHashPartition(inserts);
-            
-        }
+
+        generateRangePartition(inserts);
+
     }
     public List<String> mutateDDL() {
         List<String> res = new ArrayList<String>();

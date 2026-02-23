@@ -175,6 +175,42 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().add("unknown signature");
         globalState.getExpectedErrors().add("must appear in the GROUP BY clause or be used in an aggregate function");
         globalState.getExpectedErrors().add("cannot determine type of empty array. Consider casting to the desired type, for example ARRAY[]::int[]");
+        globalState.getExpectedErrors().add("has type bytes");
+        globalState.getExpectedErrors().addRegexString("expected (.)* to have");
+        globalState.getExpectedErrors().add("value type bytes doesn't match type bit of");
+        globalState.getExpectedErrors().add("non-integer constant in");
+        globalState.getExpectedErrors().add("SPLIT AT data column");
+        globalState.getExpectedErrors().add("context-dependent operators are not allowed in STORED COMPUTED COLUMN");
+        globalState.getExpectedErrors().add("is not in select list");
+        globalState.getExpectedErrors().add("incompatible value type:");
+        globalState.getExpectedErrors().add("expressions must appear in select list");
+        globalState.getExpectedErrors().add("non-integer constant in GROUP BY");
+        globalState.getExpectedErrors().add("unsupported binary operator:");
+        globalState.getExpectedErrors().add("violates not-null constraint");
+        globalState.getExpectedErrors().add("negative value for");
+        globalState.getExpectedErrors().add("duplicate key value violates unique constraint");
+        globalState.getExpectedErrors().add("JOIN/USING types bit for left and timetz for right cannot be matched for column");
+        globalState.getExpectedErrors().add("incompatible type annotation");
+        globalState.getExpectedErrors().add("ambiguous call");
+        globalState.getExpectedErrors().add("failed to satisfy CHECK constraint");
+        globalState.getExpectedErrors().add("index \"\" already contains column");
+        globalState.getExpectedErrors().add("VALUES types bit[] and bytes[] cannot be matched");
+        globalState.getExpectedErrors().add("doesn't match type");
+        globalState.getExpectedErrors().addRegexString("relation (.)* already exists");
+        globalState.getExpectedErrors().addRegexString("missing (.)* primary key column");
+        globalState.getExpectedErrors().addRegexString("index (.)* does not exist");
+        globalState.getExpectedErrors().addRegexString("index (.)* not found");
+        globalState.getExpectedErrors().add("cannot write directly to computed column");
+        globalState.getExpectedErrors().add("cannot be matched");
+        globalState.getExpectedErrors().add("integer out of range for type");
+        globalState.getExpectedErrors().add("invalid regular expression: error parsing regexp");
+        globalState.getExpectedErrors().add("cannot create a sharded index on a computed column");
+        globalState.getExpectedErrors().add("argument of HAVING must be type bool");
+        globalState.getExpectedErrors().addRegexString("could not parse (.)* as type");
+        globalState.getExpectedErrors().add("ambiguous binary operator");
+        globalState.getExpectedErrors().add("STORED COMPUTED COLUMN expression cannot reference computed columns");
+        globalState.getExpectedErrors().add("exceeds supported timestamp bounds");
+        globalState.getExpectedErrors().add("UPSERT or INSERT...ON CONFLICT command cannot affect row a second time");
     }
 
     List<String> mutateSeed(CockroachDBGlobalState state, String sql) {
@@ -247,9 +283,11 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                 nrPerformed = globalState.getRandomly().getInteger(0, 3);
                 break;
             case EXPLAIN:
-                nrPerformed = globalState.getRandomly().getInteger(0, 10);
+                nrPerformed = globalState.getRandomly().getInteger(0, 1);
                 break;
             case SHOW:
+                nrPerformed = 0;
+                break;
             case TRUNCATE:
             case DELETE:
             case CREATE_STATISTICS:
@@ -309,9 +347,10 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                 int nrTries = 0;
                 do {
                     query = nextAction.getQuery(globalState);
-                    success = globalState.executeStatement(query);
+                    SQLQueryAdapter lowerCaseQuery = new SQLQueryAdapter(query.getQueryString().toLowerCase(), globalState.getExpectedErrors(), true);
+                    success = globalState.executeStatement(lowerCaseQuery);
                     if(success) {
-                        globalState.getHistory().add(query.getQueryString());
+                        globalState.getHistory().add(lowerCaseQuery.getQueryString());
                     }
                 } while (!success && nrTries++ < 1000);
             } catch (IgnoreMeException e) {

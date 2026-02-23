@@ -40,7 +40,7 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
             case STRING:
                 return false;
             default:
-                throw new AssertionError(this);
+                return false;
             }
         }
 

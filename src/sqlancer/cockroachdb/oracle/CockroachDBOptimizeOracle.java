@@ -184,7 +184,6 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
         ban_op.add("SET distsql = always");
         ban_op.add("SET override_multi_region_zone_config = true");
         ban_op.add("SET enable_zigzag_join = on");
-        ban_op.add("SET parallel_scans = on");
         ban_op.add("SET vectorize_row_count_threshold = 1");
         ban_op.add("SET enable_zigzag_join = on");
         ban_op.add("SET enable_lookup_join = on");
@@ -194,6 +193,8 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
         ban_op.add("SET reorder_joins_limit = 10;");
         ban_op.add("SET implicit_select_for_update = on");
         ban_op.add("SET use_cached_plans = on");
+        ban_op.add("SET always_distribute_full_scans = on");
+        ban_op.add("SET enable_insert_fast_path = on");
                 //String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on';";
         try{
             for(String str: ban_op) {
@@ -211,7 +212,6 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
         ban_op.add("SET distsql = off");                               // 关闭分布式执行，强制本地处理
         ban_op.add("SET override_multi_region_zone_config = false");    // 恢复默认区域配置
         ban_op.add("SET enable_zigzag_join = off");                    // 关闭复杂的双索引交叉连接
-        ban_op.add("SET parallel_scans = off");                        // 关闭并行扫描，走顺序扫描
         ban_op.add("SET vectorize_row_count_threshold = 1000000");     // 极大化阈值，确保不触发矢量化
         ban_op.add("SET enable_lookup_join = off");                    // 关闭 Lookup Join
         ban_op.add("SET enable_merge_join = off");                     // 关闭 Merge Join
@@ -220,6 +220,8 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
         ban_op.add("SET reorder_joins_limit = 0");                     // 禁用 Join 重排，按 SQL 书写顺序执行
         ban_op.add("SET implicit_select_for_update = off");            // 禁用隐式锁升级
         ban_op.add("SET use_cached_plans = off");                      // 禁用计划缓存，确保不重用旧的路径
+        ban_op.add("SET always_distribute_full_scans = off");
+        ban_op.add("SET enable_insert_fast_path = off");
                 //String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on';";
         try{
             for(String str: ban_op) {
@@ -239,12 +241,6 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
                 // }
                 List<String> tables = extract_table_name_from_stmt(cur);
                 try{
-                    for(String table : tables) {
-                        if(Randomly.getBoolean()) {
-                            String alter = "alter table " + table + " engine=NDBCLUSTER";
-                            globalState.executeStatement(new SQLQueryAdapter(alter, this.errors, false));
-                        }
-                    }
 
 
                     close_optimization();
