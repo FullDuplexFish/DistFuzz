@@ -211,6 +211,10 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().add("STORED COMPUTED COLUMN expression cannot reference computed columns");
         globalState.getExpectedErrors().add("exceeds supported timestamp bounds");
         globalState.getExpectedErrors().add("UPSERT or INSERT...ON CONFLICT command cannot affect row a second time");
+        globalState.getExpectedErrors().add("declared partition columns");
+        globalState.getExpectedErrors().addRegexString("relation (.)* does not exist");
+        globalState.getExpectedErrors().add("could not produce a query plan conforming to the LOOKUP JOIN hint");
+        globalState.getExpectedErrors().add("empty range");
     }
 
     List<String> mutateSeed(CockroachDBGlobalState state, String sql) {
@@ -243,8 +247,9 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         for (String s : standardSettings) {
             manager.execute(new SQLQueryAdapter(s));
         }
-
-        for (int i = 0; i < Randomly.fromOptions(2, 3); i++) {
+        int nrTable = (int)globalState.getRandomly().getNotCachedInteger(1, 4);
+        int tableCnt = 0;
+        while(tableCnt < nrTable) {
             try{
                 SQLQueryAdapter createTable = CockroachDBTableGenerator.generate(globalState);
 
@@ -259,6 +264,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                     boolean success = globalState.executeStatement(createTable);
                     if(success) {
                         globalState.insertIntoHistory(createTable.getQueryString());
+                        tableCnt ++ ;
                     }
     
                 }

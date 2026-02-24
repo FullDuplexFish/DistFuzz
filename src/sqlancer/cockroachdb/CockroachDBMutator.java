@@ -94,12 +94,13 @@ public class CockroachDBMutator extends AbstractMutator{
         int bound = range;
         for(int i = 0; i < cnt; i ++ ) {
             int next_bound = bound + range + (int)Randomly.getNotCachedInteger(0, 100);
-            sql += "partition p" + String.valueOf(i) + " values from(" + String.valueOf(bound) + ") to (" + next_bound + ")";
+            sql += "partition p" + String.valueOf(i) + " values from(" + String.valueOf(bound) + ") to (" + next_bound + "),";
+            
             bounds.add(bound);
             bounds.add(bound + 1);
             bound = next_bound;
         }
-        sql += "partition p" + String.valueOf(cnt) + " values from (" +  bound + ") to (maxvalue);";
+        sql += "partition p" + String.valueOf(cnt) + " values from (" +  bound + ") to (maxvalue));";
         state.getLogger().writeCurrent("after mutating " + sql);
         
 

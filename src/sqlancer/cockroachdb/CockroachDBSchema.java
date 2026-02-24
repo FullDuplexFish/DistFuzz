@@ -242,22 +242,33 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
             int val = Integer.parseInt(typeString.substring(7, typeString.length() - 1));
             return CockroachDBCompositeDataType.getBit(val);
         }
+        typeString = typeString.split(" ")[0];
+        if (typeString.endsWith("[]")) {
+            String substring = typeString.substring(0, typeString.length() - 2);
+            CockroachDBCompositeDataType elementType = getColumnType(substring);
+            return new CockroachDBCompositeDataType(CockroachDBDataType.ARRAY, elementType);
+        }
         switch (typeString) {
         case "VARBIT":
             return CockroachDBCompositeDataType.getVarBit(-1);
         case "BIT":
             return CockroachDBCompositeDataType.getBit(1);
+        case "INT64":
+        return CockroachDBCompositeDataType.getInt(64);
         case "INT8":
+        case "BIGINT":
             return CockroachDBCompositeDataType.getInt(8);
         case "INT4":
             return CockroachDBCompositeDataType.getInt(4);
         case "INT2":
+        case "SMALLINT":
             return CockroachDBCompositeDataType.getInt(2);
         case "BOOL":
             return new CockroachDBCompositeDataType(CockroachDBDataType.BOOL);
         case "STRING":
             return new CockroachDBCompositeDataType(CockroachDBDataType.STRING);
         case "FLOAT8":
+        case "FLOAT":
             return new CockroachDBCompositeDataType(CockroachDBDataType.FLOAT);
         case "BYTES":
             return new CockroachDBCompositeDataType(CockroachDBDataType.BYTES);
@@ -275,6 +286,12 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
             return new CockroachDBCompositeDataType(CockroachDBDataType.TIME);
         case "TIMETZ":
             return new CockroachDBCompositeDataType(CockroachDBDataType.TIMETZ);
+        case "SERIAL2":
+        case "SERIAL4":
+        case "SERIAL8":
+        case "BIGSERIAL":
+        case "SMALLSERIAL":
+            return new CockroachDBCompositeDataType(CockroachDBDataType.SERIAL);
 
         default:
             throw new AssertionError(typeString);
