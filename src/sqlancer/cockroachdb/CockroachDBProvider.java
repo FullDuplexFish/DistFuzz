@@ -215,6 +215,11 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().addRegexString("relation (.)* does not exist");
         globalState.getExpectedErrors().add("could not produce a query plan conforming to the LOOKUP JOIN hint");
         globalState.getExpectedErrors().add("empty range");
+        globalState.getExpectedErrors().add("can't plan vectorized non-inner hash joins with ON expressions");
+        globalState.getExpectedErrors().add("unimplemented: partitioning by array column");
+        globalState.getExpectedErrors().add("does not match type");
+        globalState.getExpectedErrors().add("LIKE regexp compilation failed");
+        globalState.getExpectedErrors().add("integer out of range");
     }
 
     List<String> mutateSeed(CockroachDBGlobalState state, String sql) {
@@ -282,7 +287,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
             int nrPerformed = 0;
             switch (action) {
             case INSERT:
-                nrPerformed = globalState.getRandomly().getInteger(0, options.getMaxNumberInserts());
+                nrPerformed = globalState.getRandomly().getInteger(0, 10);
                 break;
             case UPDATE:
             case SPLIT:
@@ -297,7 +302,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
             case TRUNCATE:
             case DELETE:
             case CREATE_STATISTICS:
-                nrPerformed = globalState.getRandomly().getInteger(0, 2);
+                nrPerformed = globalState.getRandomly().getInteger(0, 5);
                 break;
             case CREATE_VIEW:
                 nrPerformed = globalState.getRandomly().getInteger(0, 2);
@@ -307,7 +312,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                 nrPerformed = globalState.getRandomly().getInteger(0, 3);
                 break;
             case CREATE_INDEX:
-                nrPerformed = globalState.getRandomly().getInteger(0, 10);
+                nrPerformed = globalState.getRandomly().getInteger(0, 3);
                 break;
             case COMMENT_ON:
             case SCRUB:

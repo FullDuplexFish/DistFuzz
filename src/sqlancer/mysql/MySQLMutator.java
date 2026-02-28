@@ -165,7 +165,7 @@ public class MySQLMutator extends AbstractMutator{
         String regex = "(?<=" + col + "\\s).*?(?=[,\\)])"; // \b 表示单词边界，以避免匹配到类似 t1234abc 的表名
         
         Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(sql);
+        Matcher matcher = pattern.matcher(str);
         
         List<String> tableNames = new ArrayList<>();
         

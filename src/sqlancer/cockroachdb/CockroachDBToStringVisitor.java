@@ -197,9 +197,11 @@ public class CockroachDBToStringVisitor extends ToStringVisitor<CockroachDBExpre
             return;
         } else {
             if (isOuter) {
-                sb.append(Randomly.fromOptions("HASH", "MERGE", "LOOKUP"));
+                //sb.append(Randomly.fromOptions("HASH", "MERGE", "LOOKUP"));//LOOK UP JOIN and MERGE JOIN cause too many false positives
+                sb.append(Randomly.fromOptions("HASH"));
             } else {
-                sb.append(Randomly.fromOptions("HASH", "MERGE"));
+                //sb.append(Randomly.fromOptions("HASH", "MERGE"));
+                sb.append(Randomly.fromOptions("HASH"));
             }
             sb.append(" ");
         }

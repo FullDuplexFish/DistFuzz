@@ -58,6 +58,8 @@ public final class ComparatorHelper {
             if (result == null) {
                 state.ignoreCnt ++ ;
                 System.out.println("encounter null result set " + state.ignoreCnt);
+                System.out.println("query is " + queryString);
+                //throw new AssertionError();
                 throw new IgnoreMeException();
                 //throw new AssertionError("null resultset " + queryString);
             }

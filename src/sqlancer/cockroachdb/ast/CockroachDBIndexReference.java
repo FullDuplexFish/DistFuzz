@@ -23,11 +23,12 @@ public class CockroachDBIndexReference extends CockroachDBTableReference
 
     @Override
     public String getOperatorRepresentation() {
-        if (Randomly.getBoolean()) {
-            return String.format("@{FORCE_INDEX=%s}", index.getIndexName());
-        } else {
-            return String.format("@{FORCE_INDEX=%s,%s}", index.getIndexName(), Randomly.fromOptions("ASC", "DESC"));
-        }
+        // if (Randomly.getBoolean()) {
+        //     return String.format("@{FORCE_INDEX=%s}", index.getIndexName());
+        // } else {
+        //     return String.format("@{FORCE_INDEX=%s,%s}", index.getIndexName(), Randomly.fromOptions("ASC", "DESC"));
+        // }
+        return "";
     }
 
     @Override

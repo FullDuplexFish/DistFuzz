@@ -101,7 +101,7 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
  
     private String generateSelect() {
         CockroachDBSelect select = new CockroachDBSelect();
-        CockroachDBTables tables = globalState.getSchema().getRandomTableNonEmptyTables(2);
+        CockroachDBTables tables = globalState.getSchema().getRandomTableNonEmptyTables();
         List<CockroachDBExpression> tableList = CockroachDBCommon.getTableReferences(
                 tables.getTables().stream().map(t -> new CockroachDBTableReference(t)).collect(Collectors.toList()));
         CockroachDBExpressionGenerator gen = new CockroachDBExpressionGenerator(globalState).setColumns(tables.getColumns());
@@ -180,7 +180,7 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
     public void open_optimization() throws SQLException {
         
         List<String> ban_op = new ArrayList<String>();
-        ban_op.add("SET vectorize = 'experimental_always'");
+        ban_op.add("SET vectorize = on");
         ban_op.add("SET distsql = always");
         ban_op.add("SET override_multi_region_zone_config = true");
         ban_op.add("SET enable_zigzag_join = on");

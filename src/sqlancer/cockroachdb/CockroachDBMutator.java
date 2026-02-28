@@ -152,24 +152,33 @@ public class CockroachDBMutator extends AbstractMutator{
     }
     private List<CockroachDBColumn> getCockroachDBColumns(List<String> cols) {
         List<CockroachDBColumn> res = new ArrayList<CockroachDBColumn>();
+ 
         for(int i = 0; i < cols.size(); i ++ ) {
             String type = extractColumnTypeFromStmt(sql, cols.get(i));
+            state.getLogger().writeCurrent("try to get type of " + cols.get(i));
+            state.getLogger().writeCurrent("parsing type string:" + type);
+            if(type == null){
+                state.getLogger().writeCurrent("type is null, sql is " + sql);
+            }
             CockroachDBColumn cur = new CockroachDBColumn(cols.get(i), CockroachDBSchema.getColumnType(type), false, true);
             res.add(cur);
         }
         return res;
     }
-    private String extractColumnTypeFromStmt(String str, String col) {
+    public String extractColumnTypeFromStmt(String str, String col) {
         // 正则表达式：匹配列的类型
         String regex = "(?<=" + col + "\\s).*?(?=[,\\)])"; // \b 表示单词边界，以避免匹配到类似 t1234abc 的表名
         
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(sql);
+        Pattern pattern = Pattern.compile(regex,Pattern.DOTALL);
+        System.out.println(pattern.toString());
+        Matcher matcher = pattern.matcher(str);
         
-        List<String> tableNames = new ArrayList<>();
         
-        if (matcher.find()) {
-            return matcher.group().trim();
+        while (matcher.find()) {
+            String cur =  matcher.group().trim();
+            if(CockroachDBSchema.getColumnType(cur) != null) {
+                return cur;
+            }
         }
         return null;
     }

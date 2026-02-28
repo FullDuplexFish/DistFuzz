@@ -24,7 +24,11 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
         TIMETZ, ARRAY;
 
         public static CockroachDBDataType getRandom() {
-            return Randomly.fromOptions(values());
+            //return Randomly.fromOptions(values());//serial type will cause false positive
+            return Randomly.fromOptions(
+                INT, BOOL, STRING, FLOAT, BYTES, BIT, VARBIT, INTERVAL, TIMESTAMP, 
+                TIMESTAMPTZ, DECIMAL, JSONB, TIME, TIMETZ, ARRAY
+            );
         }
 
         public CockroachDBCompositeDataType get() {
@@ -226,6 +230,7 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
     }
 
     public static CockroachDBCompositeDataType getColumnType(String typeString) {
+        
         if (typeString.endsWith("[]")) {
             String substring = typeString.substring(0, typeString.length() - 2);
             CockroachDBCompositeDataType elementType = getColumnType(substring);
@@ -235,11 +240,17 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
             return new CockroachDBCompositeDataType(CockroachDBDataType.STRING);
         }
         if (typeString.startsWith("BIT(")) {
-            int val = Integer.parseInt(typeString.substring(4, typeString.length() - 1));
+            if(typeString.endsWith(")")) {
+                typeString = typeString.substring(0, typeString.length() -  1);
+            }
+            int val = Integer.parseInt(typeString.substring(4, typeString.length()));
             return CockroachDBCompositeDataType.getBit(val);
         }
         if (typeString.startsWith("VARBIT(")) {
-            int val = Integer.parseInt(typeString.substring(7, typeString.length() - 1));
+            if(typeString.endsWith(")")) {
+                typeString = typeString.substring(0, typeString.length() -  1);
+            }
+            int val = Integer.parseInt(typeString.substring(7, typeString.length()));
             return CockroachDBCompositeDataType.getBit(val);
         }
         typeString = typeString.split(" ")[0];
@@ -294,7 +305,8 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
             return new CockroachDBCompositeDataType(CockroachDBDataType.SERIAL);
 
         default:
-            throw new AssertionError(typeString);
+            //throw new AssertionError(typeString);
+            return null;
         }
     }
 

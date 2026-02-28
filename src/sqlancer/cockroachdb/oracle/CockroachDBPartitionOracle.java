@@ -64,7 +64,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
  
         private String generateSelect() {
         CockroachDBSelect select = new CockroachDBSelect();
-        CockroachDBTables tables = globalState.getSchema().getRandomTableNonEmptyTables(2);
+        CockroachDBTables tables = globalState.getSchema().getRandomTableNonEmptyTables();
         List<CockroachDBExpression> tableList = CockroachDBCommon.getTableReferences(
                 tables.getTables().stream().map(t -> new CockroachDBTableReference(t)).collect(Collectors.toList()));
         CockroachDBExpressionGenerator gen = new CockroachDBExpressionGenerator(globalState).setColumns(tables.getColumns());

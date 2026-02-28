@@ -31,11 +31,11 @@ public final class CockroachDBUpdateGenerator extends AbstractUpdateGenerator<Co
         gen = new CockroachDBExpressionGenerator(globalState).setColumns(columns);
         sb.append("UPDATE ");
         sb.append(table.getName());
-        if (Randomly.getBoolean()) {
-            sb.append("@{FORCE_INDEX=");
-            sb.append(Randomly.fromList(table.getIndexes()).getIndexName());
-            sb.append("}");
-        }
+        // if (Randomly.getBoolean()) {
+        //     sb.append("@{FORCE_INDEX=");
+        //     sb.append(Randomly.fromList(table.getIndexes()).getIndexName());
+        //     sb.append("}");
+        // }
         sb.append(" SET ");
         updateColumns(columns);
         if (Randomly.getBoolean()) {

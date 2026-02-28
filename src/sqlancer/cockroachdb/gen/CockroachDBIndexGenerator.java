@@ -41,9 +41,10 @@ public class CockroachDBIndexGenerator extends CockroachDBGenerator {
         }
         CockroachDBTable table = globalState.getSchema().getRandomTable(t -> !t.isView());
         sb.append("CREATE ");
-        if (Randomly.getBoolean()) {
-            sb.append("UNIQUE ");
-        }
+        // if (Randomly.getBoolean()) {
+        //     sb.append("UNIQUE ");
+        // }
+        //unique index will affect behavior of INSERT ... ON CONFLICT ... 
         sb.append("INDEX ON ");
         sb.append(table.getName());
         List<CockroachDBColumn> columns = table.getRandomNonEmptyColumnSubset();
