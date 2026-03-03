@@ -212,7 +212,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().add("exceeds supported timestamp bounds");
         globalState.getExpectedErrors().add("UPSERT or INSERT...ON CONFLICT command cannot affect row a second time");
         globalState.getExpectedErrors().add("declared partition columns");
-        globalState.getExpectedErrors().addRegexString("relation (.)* does not exist");
+        //globalState.getExpectedErrors().addRegexString("relation (.)* does not exist");
         globalState.getExpectedErrors().add("could not produce a query plan conforming to the LOOKUP JOIN hint");
         globalState.getExpectedErrors().add("empty range");
         globalState.getExpectedErrors().add("can't plan vectorized non-inner hash joins with ON expressions");
@@ -220,6 +220,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().add("does not match type");
         globalState.getExpectedErrors().add("LIKE regexp compilation failed");
         globalState.getExpectedErrors().add("integer out of range");
+        globalState.getExpectedErrors().add("overflow during Encode");
     }
 
     List<String> mutateSeed(CockroachDBGlobalState state, String sql) {
@@ -227,9 +228,97 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         List<String> res = mutator.mutateSQL();
         return res;
     }
+    public void open_optimization(CockroachDBGlobalState globalState) throws SQLException {
+        
+        List<String> ban_op = new ArrayList<String>();
+        ban_op.add("SET vectorize = on");
+        ban_op.add("SET distsql = always");
+        ban_op.add("SET override_multi_region_zone_config = true");
+        ban_op.add("SET enable_zigzag_join = on");
+
+
+        ban_op.add("SET optimizer_use_not_visible_indexes = on");
+        ban_op.add("SET reorder_joins_limit = 10;");
+  
+        ban_op.add("SET plan_cache_mode = auto");
+        ban_op.add("SET always_distribute_full_scans = on");
+        ban_op.add("SET enable_insert_fast_path = on");
+
+        // ban_op.add("SET large_full_scan_rows = 100");
+        // ban_op.add("SET disallow_full_table_scans = off");
+        ban_op.add("SET distribute_group_by_row_count_threshold = 3");
+        ban_op.add("SET distribute_scan_row_count_threshold = 3");
+        ban_op.add("SET optimizer_push_offset_into_index_join = on");
+        ban_op.add("SET optimizer_use_forecasts = on");
+        ban_op.add("SET optimizer_use_histograms = on");
+        ban_op.add("SET optimizer_use_improved_multi_column_selectivity_estimate = on");
+        ban_op.add("SET optimizer_use_improved_zigzag_join_costing = on");
+        ban_op.add("SET optimizer_use_lock_op_for_serializable = on");
+        ban_op.add("SET optimizer_use_merged_partial_statistics = on");
+        ban_op.add("SET optimizer_use_multicol_stats = on");
+        ban_op.add("SET optimizer_use_not_visible_indexes = on");
+        ban_op.add("SET optimizer_use_virtual_computed_column_stats = on");
+        ban_op.add("SET optimizer_use_multicol_stats = on");
+        ban_op.add("SET optimizer_use_multicol_stats = on");
+                //String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on';";
+        try{
+            for(String str: ban_op) {
+                globalState.executeStatement(new SQLQueryAdapter(str, globalState.getExpectedErrors(), false));
+            }
+            
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+    public void close_optimization(CockroachDBGlobalState globalState) throws SQLException {
+        
+        List<String> ban_op = new ArrayList<String>();
+        ban_op.add("SET vectorize = off");                             // 关闭矢量化执行，走传统行式引擎
+        ban_op.add("SET distsql = off");                               // 关闭分布式执行，强制本地处理
+        ban_op.add("SET override_multi_region_zone_config = false");    // 恢复默认区域配置
+        ban_op.add("SET enable_zigzag_join = off");                    // 关闭复杂的双索引交叉连接
+
+
+        ban_op.add("SET optimizer_use_not_visible_indexes = off");     // 严禁使用不可见索引
+        ban_op.add("SET reorder_joins_limit = 0");                     // 禁用 Join 重排，按 SQL 书写顺序执行
+
+        ban_op.add("SET plan_cache_mode = force_generic_plan");                     
+        ban_op.add("SET always_distribute_full_scans = off");
+        ban_op.add("SET enable_insert_fast_path = off");
+        // ban_op.add("SET large_full_scan_rows = 5");
+        // ban_op.add("SET disallow_full_table_scans = on");
+        ban_op.add("SET distribute_group_by_row_count_threshold = 300");
+        ban_op.add("SET distribute_scan_row_count_threshold = 300");
+        ban_op.add("SET optimizer_push_offset_into_index_join = off");
+        ban_op.add("SET optimizer_use_forecasts = off");
+        ban_op.add("SET optimizer_use_histograms = off");
+        ban_op.add("SET optimizer_use_improved_multi_column_selectivity_estimate = off");
+        ban_op.add("SET optimizer_use_improved_zigzag_join_costing = off");
+        ban_op.add("SET optimizer_use_lock_op_for_serializable = off");
+        ban_op.add("SET optimizer_use_merged_partial_statistics = off");
+        ban_op.add("SET optimizer_use_multicol_stats = off");
+        ban_op.add("SET optimizer_use_not_visible_indexes = off");
+        ban_op.add("SET optimizer_use_virtual_computed_column_stats = off");
+        ban_op.add("SET optimizer_use_multicol_stats = off");
+        ban_op.add("SET optimizer_use_multicol_stats = off");
+                //String ban_op = "SET session optimizer_switch = 'index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=on,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on';";
+        try{
+            for(String str: ban_op) {
+                globalState.executeStatement(new SQLQueryAdapter(str, globalState.getExpectedErrors(), false));
+            }
+            
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
     @Override
     public void generateDatabase(CockroachDBGlobalState globalState) throws Exception {
         updateExpectedErrors(globalState);
+        if(globalState.getRandomly().getBoolean()) {
+            open_optimization(globalState);
+        }else{
+            close_optimization(globalState);
+        }
         if(globalState.getHistory() == null) {
             globalState.initHistory();
         }
@@ -261,7 +350,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
 
                 List<String> mutatedSeed = List.of(createTable.getQueryString().toLowerCase());
                 if(globalState.getDbmsSpecificOptions().enableMutate) {
-                    mutatedSeed = mutateSeed(globalState, createTable.getQueryString());
+                    mutatedSeed = mutateSeed(globalState, createTable.getQueryString().toLowerCase());
                 }
                 
                 for(String sql: mutatedSeed) {
@@ -270,6 +359,8 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                     if(success) {
                         globalState.insertIntoHistory(createTable.getQueryString());
                         tableCnt ++ ;
+                    }else{
+                        break;
                     }
     
                 }
@@ -363,7 +454,7 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
                     if(success) {
                         globalState.getHistory().add(lowerCaseQuery.getQueryString());
                     }
-                } while (!success && nrTries++ < 1000);
+                } while (!success && nrTries++ < 30);
             } catch (IgnoreMeException e) {
 
             }

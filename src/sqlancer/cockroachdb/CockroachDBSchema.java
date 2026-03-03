@@ -230,6 +230,10 @@ public class CockroachDBSchema extends AbstractSchema<CockroachDBGlobalState, Co
     }
 
     public static CockroachDBCompositeDataType getColumnType(String typeString) {
+        if(typeString == null) {
+            return null;
+        }
+        typeString = typeString.toUpperCase();
         
         if (typeString.endsWith("[]")) {
             String substring = typeString.substring(0, typeString.length() - 2);

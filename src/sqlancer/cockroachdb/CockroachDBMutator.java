@@ -176,6 +176,7 @@ public class CockroachDBMutator extends AbstractMutator{
         
         while (matcher.find()) {
             String cur =  matcher.group().trim();
+            System.out.println(cur);
             if(CockroachDBSchema.getColumnType(cur) != null) {
                 return cur;
             }

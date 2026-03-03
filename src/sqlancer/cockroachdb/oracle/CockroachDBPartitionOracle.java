@@ -248,7 +248,7 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
             }
             addTableToMap(succ, table_exists, name);
 
-            addHashPartition(name);
+            addHashPartition(name + "_oracle");
         }catch(Exception e) {
             e.printStackTrace();
         }

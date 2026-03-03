@@ -33,14 +33,14 @@ import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.common.query.SQLancerResultSet;
 import sqlancer.mysql.MySQLMutator;
 
-public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalState> {
+public class CockroachDBNoOracle implements TestOracle<CockroachDBGlobalState> {
 
     private final CockroachDBGlobalState globalState;
     private List<String> history;
     private List<String> queries;
     private final ExpectedErrors errors;
 
-    public CockroachDBOptimizeOracle(CockroachDBGlobalState globalState) {
+    public CockroachDBNoOracle(CockroachDBGlobalState globalState) {
         this.globalState = globalState;
         this.history = globalState.getHistory();
         this.errors = globalState.getExpectedErrors();
@@ -271,10 +271,10 @@ public class CockroachDBOptimizeOracle implements TestOracle<CockroachDBGlobalSt
                 try{
 
 
-                    close_optimization();
+                    //close_optimization();
                     List<String> resultSet = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
 
-                    open_optimization();
+                    //open_optimization();
                     List<String> resultSet2 = ComparatorHelper.getResultSetFirstColumnAsString(cur, errors, globalState);
                     ComparatorHelper.assumeResultSetsAreEqual(resultSet, resultSet2, cur, List.of(cur),
                     globalState);
