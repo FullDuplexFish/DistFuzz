@@ -210,10 +210,11 @@ public class CockroachDBPartitionOracle implements TestOracle<CockroachDBGlobalS
         return str;
     }
     private void addHashPartition(String name) {
-        String stmt = "create index on " + name + "(";
+        String stmt = "create index " + name + "_i " + "on  "+ name + "(";
         String col = globalState.getRandomColumnStrings(name).split(";")[0];
         stmt += col;
-        stmt += ") using hash";
+        stmt += ") using hash with bucket_count = ";
+        stmt += globalState.getRandomly().getNotCachedInteger(10, 50);
         try {
             globalState.executeStatement(new SQLQueryAdapter(stmt, this.errors, true));
         }catch(Exception e) {

@@ -220,7 +220,6 @@ public class CockroachDBProvider extends SQLProviderAdapter<CockroachDBGlobalSta
         globalState.getExpectedErrors().add("does not match type");
         globalState.getExpectedErrors().add("LIKE regexp compilation failed");
         globalState.getExpectedErrors().add("integer out of range");
-        globalState.getExpectedErrors().add("overflow during Encode");
     }
 
     List<String> mutateSeed(CockroachDBGlobalState state, String sql) {
